@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewWatcher(t *testing.T) {
-	w, err := NewWatcher()
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -21,7 +21,7 @@ func TestNewWatcher(t *testing.T) {
 }
 
 func TestWatcherAdd_file(t *testing.T) {
-	w, err := NewWatcher()
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestWatcherAdd_file(t *testing.T) {
 }
 
 func TestWatcherAdd_directory(t *testing.T) {
-	w, err := NewWatcher()
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestWatcherAdd_directory(t *testing.T) {
 }
 
 func TestWatcherAdd_nonexistent(t *testing.T) {
-	w, err := NewWatcher()
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestWatcherAdd_nonexistent(t *testing.T) {
 }
 
 func TestWatcherStart_contextCancel(t *testing.T) {
-	w, err := NewWatcher()
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestWatcherStart_contextCancel(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = w.Start(func(event fsnotify.Event, path string, size int64, modTime int64) {})
+		_ = w.Start(func(event fsnotify.Event) {})
 		close(done)
 	}()
 
@@ -87,7 +87,7 @@ func TestWatcherStart_contextCancel(t *testing.T) {
 }
 
 func TestWatcherClose(t *testing.T) {
-	w, err := NewWatcher()
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}

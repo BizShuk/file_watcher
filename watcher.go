@@ -50,7 +50,6 @@ func (w *fsWatcher) Add(path string) error {
 		err := w.watchedWalk(path, func(p string) error {
 			return w.wrapped.Add(p)
 		})
-
 		if err != nil {
 			return err
 		}

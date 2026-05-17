@@ -89,7 +89,6 @@ func loadFrom(path string) (*Settings, error) {
 	return &cfg, nil
 }
 
-
 // BatchPeriodDuration returns the parsed batch period as time.Duration.
 func (s *Settings) BatchPeriodDuration() (time.Duration, error) {
 	return time.ParseDuration(s.BatchPeriod)

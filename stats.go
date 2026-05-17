@@ -27,7 +27,7 @@ type StatEntry struct {
 
 // StatFile is the JSON structure written to disk each hour.
 type StatFile struct {
-	Date    string     `json:"date"`
+	Date    string          `json:"date"`
 	Entries []StatFileEntry `json:"entries"`
 }
 
@@ -42,7 +42,7 @@ type StatFileEntry struct {
 type fsStatsCollector struct {
 	mu         sync.RWMutex
 	data       map[string]StatEntry
-	hour       time.Time // the hour bucket being collected
+	hour       time.Time     // the hour bucket being collected
 	statsDirFn func() string // injectable for testing
 }
 
@@ -107,11 +107,11 @@ func (c *fsStatsCollector) FlushHour() error {
 
 	filename := c.hour.Format("2006-01-02T15") + ".json"
 	dir := c.statsDirFn()
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create stats dir: %w", err)
 	}
 	path := filepath.Join(dir, filename)
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("write stats file: %w", err)
 	}
 
@@ -152,11 +152,6 @@ func (c *fsStatsCollector) Prune(retentionDays int) error {
 		}
 	}
 	return nil
-}
-
-// statsDir returns the configured stats directory.
-func statsDir() string {
-	return defaultStatsDir()
 }
 
 // defaultStatsDir is the production implementation.

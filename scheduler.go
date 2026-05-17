@@ -9,23 +9,23 @@ import (
 
 // Scheduler periodically flushes stats and notifies via Notifier.
 type Scheduler struct {
-	collector    StatsCollector
-	notifier     Notifier
-	batchPeriod  time.Duration
+	collector     StatsCollector
+	notifier      Notifier
+	batchPeriod   time.Duration
 	retentionDays int
-	ticker       *time.Ticker
-	stop         chan struct{}
-	once         sync.Once
+	ticker        *time.Ticker
+	stop          chan struct{}
+	once          sync.Once
 }
 
 // NewScheduler creates a new Scheduler.
 func NewScheduler(col StatsCollector, notif Notifier, period time.Duration, retentionDays int) *Scheduler {
 	return &Scheduler{
-		collector:    col,
-		notifier:     notif,
-		batchPeriod:  period,
+		collector:     col,
+		notifier:      notif,
+		batchPeriod:   period,
 		retentionDays: retentionDays,
-		stop:         make(chan struct{}),
+		stop:          make(chan struct{}),
 	}
 }
 
@@ -62,7 +62,8 @@ func (s *Scheduler) flush() {
 	}
 
 	// TODO: build summary string from collector for notifier
-	if err := s.notifier.Notify(fmt.Sprintf("[%s] Stats flushed and pruned", time.Now().Format(time.RFC3339))); err != nil {
+	message := fmt.Sprintf("[%s] Stats flushed and pruned", time.Now().Format(time.RFC3339))
+	if err := s.notifier.Notify(message); err != nil {
 		fmt.Fprintf(os.Stderr, "notify error: %v\n", err)
 	}
 }
@@ -78,4 +79,3 @@ func (s *Scheduler) FlushNow() {
 		s.flush()
 	})
 }
-

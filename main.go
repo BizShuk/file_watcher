@@ -18,16 +18,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	collector := NewStatsCollector()
-
-	notifier := &StdoutNotifier{}
-
 	period, err := cfg.BatchPeriodDuration()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "parse batch period: %v\n", err)
 		os.Exit(1)
 	}
-	
 
 	watcher, err := NewWatcher(cfg.ExcludeList)
 	if err != nil {
@@ -42,16 +37,17 @@ func main() {
 		}
 	}
 
+	collector := NewStatsCollector()
 	handler := func(event fsnotify.Event) {
 		var path string = event.Name
 		var size int64 = 0
 		var modTime int64 = time.Now().Unix()
-		fileInfo, err := os.Stat(event.Name); 
+		fileInfo, err := os.Stat(event.Name)
 		if err == nil {
 			size = fileInfo.Size()
 			modTime = fileInfo.ModTime().Unix()
 		}
-		
+
 		if event.Has(fsnotify.Remove) {
 			collector.Remove(path)
 			return
@@ -64,6 +60,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	notifier := &StdoutNotifier{}
 	sched := NewScheduler(collector, notifier, period, cfg.StatsRetentionDays)
 	if err := sched.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "start scheduler: %v\n", err)
