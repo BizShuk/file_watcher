@@ -1,0 +1,12 @@
+{
+  "watch_list": [
+    "/tmp"
+  ],
+  "admin": {
+    "name": "admin",
+    "email": "admin@localhost",
+    "webhook_url": ""
+  },
+  "batch_period": "1h",
+  "stats_retention_days": 7
+}
