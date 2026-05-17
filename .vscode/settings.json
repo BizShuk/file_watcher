@@ -1,0 +1,25 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "{.svn,.hg,.DS_Store,Thumbs.db}": true,
+        "{archive,*.bak*}": true,
+        "{.git,.geminiignore,.gitlab,.pre-commit-config.yaml}": true,
+        "{*.code-workspace,.golangci.yml,go.sum}": true,
+        "{.specify,.gemini,.agent,.serena,.ttadk,.coco,.vscode}": true,
+        "{.claude}": false,
+        "{.devops,.settings}": true,
+        "{.classpath,.project}": true,
+        "{target,out,dist,output}": true,
+        "{.mvn,node_modules,__pycache__,.venv}": true,
+        "{__debug_bin*}": true,
+        "{**/*_test.go}": true,
+        "{gen/**,kitex_gen/**,thrift_gen/**}": true,
+        "-1": true,
+        "file_watcher": true
+    },
+    "explorerExclude.backup": {}
+}

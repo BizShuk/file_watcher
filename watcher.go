@@ -13,7 +13,7 @@ import (
 
 // FileHandler is called for each file event.
 // (ISP: focused callback interface, no fat methods)
-type FileHandler func(event fsnotify.Event, path string, size int64, modTime int64)
+type FileHandler func(event fsnotify.Event)
 
 // WatcherOps defines the file-watcher operations.
 // (DIP: main.go depends on this abstraction, not fsnotify directly)
@@ -105,14 +105,9 @@ func (w *fsWatcher) Start(handler FileHandler) error {
 				if skip {
 					continue
 				}
-				log.Info("Event", event)
-				var size int64
-				var modTime int64
-				if info, err := os.Stat(event.Name); err == nil {
-					size = info.Size()
-					modTime = info.ModTime().Unix()
-				}
-				handler(event, event.Name, size, modTime)
+				log.Info("Event", "name", event.Name, "op", event.Op)
+
+				handler(event)
 			case err := <-w.wrapped.Errors:
 				// Log and continue — many fsnotify errors are transient.
 				fmt.Fprintf(os.Stderr, "watcher error: %v\n", err)

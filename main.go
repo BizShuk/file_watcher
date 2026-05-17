@@ -42,7 +42,16 @@ func main() {
 		}
 	}
 
-	handler := func(event fsnotify.Event, path string, size int64, modTime int64) {
+	handler := func(event fsnotify.Event) {
+		var path string = event.Name
+		var size int64 = 0
+		var modTime int64 = time.Now().Unix()
+		fileInfo, err := os.Stat(event.Name); 
+		if err == nil {
+			size = fileInfo.Size()
+			modTime = fileInfo.ModTime().Unix()
+		}
+		
 		if event.Has(fsnotify.Remove) {
 			collector.Remove(path)
 			return
