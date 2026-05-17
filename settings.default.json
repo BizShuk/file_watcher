@@ -2,6 +2,9 @@
   "watch_list": [
     "/tmp"
   ],
+  "exclude_list": [
+    ".git"
+  ],
   "admin": {
     "name": "admin",
     "email": "admin@localhost",

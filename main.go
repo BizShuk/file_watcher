@@ -6,6 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/charmbracelet/log"
+	"github.com/fsnotify/fsnotify"
 )
 
 func main() {
@@ -24,26 +27,27 @@ func main() {
 		fmt.Fprintf(os.Stderr, "parse batch period: %v\n", err)
 		os.Exit(1)
 	}
-	sched := NewScheduler(collector, notifier, period, cfg.StatsRetentionDays)
+	
 
-	watcher, err := NewWatcher()
+	watcher, err := NewWatcher(cfg.ExcludeList)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "create watcher: %v\n", err)
 		os.Exit(1)
 	}
 	for _, p := range cfg.WatchList {
+		log.Info("add path to watcher", "path", p)
 		if err := watcher.Add(p); err != nil {
 			fmt.Fprintf(os.Stderr, "add watch path %q: %v\n", p, err)
 			os.Exit(1)
 		}
 	}
 
-	handler := func(path string, size int64, modTime int64, isRemove bool) {
-		if isRemove {
+	handler := func(event fsnotify.Event, path string, size int64, modTime int64) {
+		if event.Has(fsnotify.Remove) {
 			collector.Remove(path)
-		} else {
-			collector.AddOrUpdate(path, size, time.Unix(modTime, 0))
+			return
 		}
+		collector.AddOrUpdate(path, size, time.Unix(modTime, 0))
 	}
 
 	if err := watcher.Start(handler); err != nil {
@@ -51,6 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	sched := NewScheduler(collector, notifier, period, cfg.StatsRetentionDays)
 	if err := sched.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "start scheduler: %v\n", err)
 		os.Exit(1)

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/charmbracelet/log"
 )
 
 // ErrConfigNotFound is returned when the config file does not exist
@@ -31,9 +33,7 @@ func LoadOrCreate(path string, defaultJSON string, out interface{}) error {
 
 	// Check if config file exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if defaultJSON == "" {
-			return ErrConfigNotFound
-		}
+		log.Info("Writing default config to ", path)
 		if err := os.WriteFile(path, []byte(defaultJSON), 0644); err != nil {
 			return fmt.Errorf("write default config to %s: %w", path, err)
 		}
@@ -43,6 +43,8 @@ func LoadOrCreate(path string, defaultJSON string, out interface{}) error {
 	if err != nil {
 		return fmt.Errorf("read config %s: %w", path, err)
 	}
+
+	log.Info("Loading config from ", path, string(data))
 
 	if err := json.Unmarshal(data, out); err != nil {
 		return fmt.Errorf("parse config %s: %w", path, err)

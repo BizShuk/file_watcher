@@ -30,6 +30,7 @@ func configDir() string {
 // Settings holds the entire configuration.
 type Settings struct {
 	WatchList          []string `json:"watch_list"`
+	ExcludeList        []string `json:"exclude_list"`
 	Admin              Admin    `json:"admin"`
 	BatchPeriod        string   `json:"batch_period"`
 	StatsRetentionDays int      `json:"stats_retention_days"`
@@ -49,9 +50,16 @@ func Load() (*Settings, error) {
 	if err := utils.LoadOrCreate(configPath(), defaultConfigJSON, &cfg); err != nil {
 		return nil, err
 	}
-	if err := cfg.validate(); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
+	if cfg.BatchPeriod == "" {
+		cfg.BatchPeriod = "1h" // default
 	}
+	if _, err := time.ParseDuration(cfg.BatchPeriod); err != nil {
+		return nil, fmt.Errorf("batch_period %q is not a valid duration: %w", cfg.BatchPeriod, err)
+	}
+	if cfg.StatsRetentionDays <= 0 {
+		cfg.StatsRetentionDays = 7 // default
+	}
+
 	return &cfg, nil
 }
 
@@ -68,34 +76,19 @@ func loadFrom(path string) (*Settings, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	if err := cfg.validate(); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
+	if cfg.BatchPeriod == "" {
+		cfg.BatchPeriod = "1h" // default
+	}
+	if _, err := time.ParseDuration(cfg.BatchPeriod); err != nil {
+		return nil, fmt.Errorf("batch_period %q is not a valid duration: %w", cfg.BatchPeriod, err)
+	}
+	if cfg.StatsRetentionDays <= 0 {
+		cfg.StatsRetentionDays = 7 // default
 	}
 
 	return &cfg, nil
 }
 
-// validate checks required fields and sensible defaults.
-func (s *Settings) validate() error {
-	if len(s.WatchList) == 0 {
-		return fmt.Errorf("watch_list is required and must not be empty")
-	}
-	for _, p := range s.WatchList {
-		if p == "" {
-			return fmt.Errorf("watch_list contains empty path")
-		}
-	}
-	if s.BatchPeriod == "" {
-		s.BatchPeriod = "1h" // default
-	}
-	if _, err := time.ParseDuration(s.BatchPeriod); err != nil {
-		return fmt.Errorf("batch_period %q is not a valid duration: %w", s.BatchPeriod, err)
-	}
-	if s.StatsRetentionDays <= 0 {
-		s.StatsRetentionDays = 7 // default
-	}
-	return nil
-}
 
 // BatchPeriodDuration returns the parsed batch period as time.Duration.
 func (s *Settings) BatchPeriodDuration() (time.Duration, error) {

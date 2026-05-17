@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 func TestNewWatcher(t *testing.T) {
@@ -72,7 +74,7 @@ func TestWatcherStart_contextCancel(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = w.Start(func(path string, size int64, modTime int64, isRemove bool) {})
+		_ = w.Start(func(event fsnotify.Event, path string, size int64, modTime int64) {})
 		close(done)
 	}()
 

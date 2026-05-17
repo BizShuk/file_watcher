@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/charmbracelet/log"
 	"github.com/fsnotify/fsnotify"
 )
 
 // FileHandler is called for each file event.
 // (ISP: focused callback interface, no fat methods)
-type FileHandler func(path string, size int64, modTime int64, isRemove bool)
+type FileHandler func(event fsnotify.Event, path string, size int64, modTime int64)
 
 // WatcherOps defines the file-watcher operations.
 // (DIP: main.go depends on this abstraction, not fsnotify directly)
@@ -23,17 +25,18 @@ type WatcherOps interface {
 
 // fsWatcher wraps fsnotify.Watcher and implements WatcherOps.
 type fsWatcher struct {
-	wrapped *fsnotify.Watcher
-	done    chan struct{}
+	wrapped     *fsnotify.Watcher
+	done        chan struct{}
+	excludeList []string
 }
 
 // NewWatcher creates a new fsWatcher.
-func NewWatcher() (*fsWatcher, error) {
+func NewWatcher(excludeList []string) (*fsWatcher, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
 	}
-	return &fsWatcher{wrapped: w, done: make(chan struct{})}, nil
+	return &fsWatcher{wrapped: w, done: make(chan struct{}), excludeList: excludeList}, nil
 }
 
 // Add registers a path to be watched.
@@ -44,10 +47,11 @@ func (w *fsWatcher) Add(path string) error {
 		return fmt.Errorf("stat path %q: %w", path, err)
 	}
 	if info.IsDir() {
-		// Watch recursively — fsnotify doesn't auto-recurse.
-		if err := w.watchedWalk(path, func(p string) error {
+		err := w.watchedWalk(path, func(p string) error {
 			return w.wrapped.Add(p)
-		}); err != nil {
+		})
+
+		if err != nil {
 			return err
 		}
 		return nil
@@ -60,6 +64,14 @@ func (w *fsWatcher) watchedWalk(root string, fn func(string) error) error {
 	return filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // skip inaccessible entries
+		}
+		for _, ext := range w.excludeList {
+			if strings.HasSuffix(p, ext) {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
 		}
 		if info.IsDir() {
 			if err := fn(p); err != nil {
@@ -83,18 +95,24 @@ func (w *fsWatcher) Start(handler FileHandler) error {
 			case <-ctx.Done():
 				return
 			case event := <-w.wrapped.Events:
-				if event.Has(fsnotify.Remove) {
-					handler(event.Name, 0, 0, true)
-					continue
-				} 
-				
-				if event.Has(fsnotify.Create) || event.Has(fsnotify.Write) {
-					info, err := os.Stat(event.Name)
-					if err != nil {
-						continue // file gone or inaccessible
+				skip := false
+				for _, ext := range w.excludeList {
+					if strings.HasSuffix(event.Name, ext) {
+						skip = true
+						break
 					}
-					handler(event.Name, info.Size(), info.ModTime().Unix(), false)
 				}
+				if skip {
+					continue
+				}
+				log.Info("Event", event)
+				var size int64
+				var modTime int64
+				if info, err := os.Stat(event.Name); err == nil {
+					size = info.Size()
+					modTime = info.ModTime().Unix()
+				}
+				handler(event, event.Name, size, modTime)
 			case err := <-w.wrapped.Errors:
 				// Log and continue — many fsnotify errors are transient.
 				fmt.Fprintf(os.Stderr, "watcher error: %v\n", err)
