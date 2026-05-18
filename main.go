@@ -11,7 +11,20 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+// runShow executes the show subcommand.
+func runShow() error {
+	return ShowCmd()
+}
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "show" {
+		if err := runShow(); err != nil {
+			fmt.Fprintf(os.Stderr, "show: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	cfg, err := Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "load config: %v\n", err)
