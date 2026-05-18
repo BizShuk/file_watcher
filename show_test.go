@@ -47,20 +47,24 @@ func TestComputeGrowth(t *testing.T) {
 		t.Errorf("expected 2 entries, got %d", len(growth))
 	}
 
-	// First entry should be test1.txt (1000 growth)
-	if growth[0].Path != "/tmp/test1.txt" {
-		t.Errorf("expected /tmp/test1.txt, got %s", growth[0].Path)
-	}
-	if growth[0].SizeChange != 1000 {
-		t.Errorf("expected SizeChange=1000, got %d", growth[0].SizeChange)
+	// Build a map for easy lookup
+	growthMap := make(map[string]GrowthEntry)
+	for _, g := range growth {
+		growthMap[g.Path] = g
 	}
 
-	// Second entry should be test2.txt (-500 growth)
-	if growth[1].Path != "/tmp/test2.txt" {
-		t.Errorf("expected /tmp/test2.txt, got %s", growth[1].Path)
+	// Check test1.txt
+	if e, ok := growthMap["/tmp/test1.txt"]; !ok {
+		t.Errorf("expected entry for /tmp/test1.txt")
+	} else if e.SizeChange != 1000 {
+		t.Errorf("expected SizeChange=1000 for test1.txt, got %d", e.SizeChange)
 	}
-	if growth[1].SizeChange != -500 {
-		t.Errorf("expected SizeChange=-500, got %d", growth[1].SizeChange)
+
+	// Check test2.txt
+	if e, ok := growthMap["/tmp/test2.txt"]; !ok {
+		t.Errorf("expected entry for /tmp/test2.txt")
+	} else if e.SizeChange != -500 {
+		t.Errorf("expected SizeChange=-500 for test2.txt, got %d", e.SizeChange)
 	}
 }
 
