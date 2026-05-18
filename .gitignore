@@ -33,3 +33,4 @@ go.work.sum
 
 tmp
 file_watcher
+.claude/settings.local.json
