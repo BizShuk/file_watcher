@@ -1,8 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"github.com/slack-go/slack"
 )
 
 type mockNotifier struct {
@@ -42,5 +47,26 @@ func TestMultiNotifier_Notify_WithError(t *testing.T) {
 
 	if !n1.called || !n2.called {
 		t.Error("expected both notifiers to be called even if one fails")
+	}
+}
+
+func TestSlackNotifier_Notify(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/chat.postMessage" {
+			t.Errorf("unexpected URL path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(struct {
+			OK bool `json:"ok"`
+		}{OK: true})
+	}))
+	defer server.Close()
+
+	notifier := NewSlackNotifier("fake-token", "fake-channel")
+	notifier.client = slack.New("fake-token", slack.OptionAPIURL(server.URL+"/"))
+
+	err := notifier.Notify("hello from test")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
 	}
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/slack-go/slack"
 )
 
 // Notifier defines how a stats summary is delivered.
@@ -40,6 +42,29 @@ func (m *MultiNotifier) Notify(summary string) error {
 	}
 	if len(errs) > 0 {
 		return fmt.Errorf("some notifiers failed: %v", errs)
+	}
+	return nil
+}
+
+// SlackNotifier delivers statistics summaries to a Slack channel via the Slack Bot SDK.
+type SlackNotifier struct {
+	client    *slack.Client
+	channelID string
+}
+
+// NewSlackNotifier creates a new SlackNotifier configured with a Bot Token and target Channel ID.
+func NewSlackNotifier(token, channelID string) *SlackNotifier {
+	return &SlackNotifier{
+		client:    slack.New(token),
+		channelID: channelID,
+	}
+}
+
+// Notify implements Notifier by posting the summary text to the specified Slack channel.
+func (s *SlackNotifier) Notify(summary string) error {
+	_, _, err := s.client.PostMessage(s.channelID, slack.MsgOptionText(summary, false))
+	if err != nil {
+		return fmt.Errorf("slack post message: %w", err)
 	}
 	return nil
 }
