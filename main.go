@@ -17,12 +17,21 @@ func runShow() error {
 }
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "show" {
-		if err := runShow(); err != nil {
-			fmt.Fprintf(os.Stderr, "show: %v\n", err)
-			os.Exit(1)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "show":
+			if err := runShow(); err != nil {
+				fmt.Fprintf(os.Stderr, "show: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		case "export":
+			if err := runExport(os.Stdout); err != nil {
+				fmt.Fprintf(os.Stderr, "export: %v\n", err)
+				os.Exit(1)
+			}
+			return
 		}
-		return
 	}
 
 	cfg, err := Load()

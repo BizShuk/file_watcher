@@ -60,6 +60,10 @@ func Load() (*Settings, error) {
 		cfg.StatsRetentionDays = 7 // default
 	}
 
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	return &cfg, nil
 }
 
@@ -86,10 +90,30 @@ func loadFrom(path string) (*Settings, error) {
 		cfg.StatsRetentionDays = 7 // default
 	}
 
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	return &cfg, nil
 }
 
 // BatchPeriodDuration returns the parsed batch period as time.Duration.
 func (s *Settings) BatchPeriodDuration() (time.Duration, error) {
 	return time.ParseDuration(s.BatchPeriod)
+}
+
+// Validate checks if the settings are valid.
+func (s *Settings) Validate() error {
+	if s.WatchList == nil {
+		return fmt.Errorf("missing watch_list")
+	}
+	if len(s.WatchList) == 0 {
+		return fmt.Errorf("empty watch_list")
+	}
+	for _, p := range s.WatchList {
+		if p == "" {
+			return fmt.Errorf("empty path in watch_list")
+		}
+	}
+	return nil
 }
