@@ -62,6 +62,31 @@ export SLACK_CHANNEL_ID="Cyourchannelid"
 
 程式啟動時若偵測到這些環境變數，會自動加載 `SlackNotifier` 並與 `StdoutNotifier` 併用，在發送本機日誌的同時，將統計摘要同步發送至 `Slack`。
 
+## 作為守護程序 (Daemon) 運行
+
+本服務支援在 macOS 和 Linux 上以背景守護程序運作，並在程式被終止時自動重啟。
+
+本專案提供了一個自動化管理腳本：
+
+```bash
+# 1. 安裝服務 (會自動偵測 OS 並生成對應設定)
+./scripts/manage-daemon.sh install
+
+# 2. 啟動服務
+./scripts/manage-daemon.sh start
+
+# 3. 檢查狀態與最近日誌
+./scripts/manage-daemon.sh status
+
+# 4. 停止服務
+./scripts/manage-daemon.sh stop
+
+# 5. 移除服務
+./scripts/manage-daemon.sh uninstall
+```
+
+更詳細的手動配置步驟（例如 `launchd` plist 設定與 Linux `systemd` user service）請參閱 [docs/daemon.md](file:///Users/shuk/projects/file_watcher/docs/daemon.md)。
+
 ## 設定檔案
 
 設定檔案位於 `~/.config/file_watcher/settings.json`（自動建立）：
