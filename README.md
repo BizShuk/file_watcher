@@ -71,7 +71,7 @@ go build -o file_watcher .
 
 | 欄位 | 類型 | 說明 |
 |------|------|------|
-| `watch_list` | `[]string` | 要監控的目錄或檔案路徑 |
+| `watch_list` | `[]string` | 要監控的目錄或檔案路徑（支援使用 `~` 代表家目錄） |
 | `exclude_list` | `[]string` | 要排除的副檔名（例如 `.git`） |
 | `batch_period` | `string` | 統計寫出的間隔時間（例如 `1h`、`30m`） |
 | `stats_retention_days` | `int` | 統計檔案的保留天數 |

@@ -87,6 +87,29 @@ func TestLoadFrom(t *testing.T) {
 			t.Fatal("expected error for malformed JSON")
 		}
 	})
+
+	t.Run("expand tilde in watch_list", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		oldHomeDirFn := homeDirFn
+		defer func() { homeDirFn = oldHomeDirFn }()
+		homeDirFn = func() string {
+			return tmpDir
+		}
+
+		cfg, err := loadFrom(tmp(`{"watch_list": ["~", "~/projects", "/tmp"]}`))
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		expected := []string{tmpDir, filepath.Join(tmpDir, "projects"), "/tmp"}
+		if len(cfg.WatchList) != len(expected) {
+			t.Fatalf("expected %d paths, got %d", len(expected), len(cfg.WatchList))
+		}
+		for i, p := range cfg.WatchList {
+			if p != expected[i] {
+				t.Errorf("expected path %q, got %q", expected[i], p)
+			}
+		}
+	})
 }
 
 func TestBatchPeriodDuration(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/shuk/file_watcher/utils"
@@ -60,6 +61,8 @@ func Load() (*Settings, error) {
 		cfg.StatsRetentionDays = 7 // default
 	}
 
+	cfg.ExpandPaths()
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -90,6 +93,8 @@ func loadFrom(path string) (*Settings, error) {
 		cfg.StatsRetentionDays = 7 // default
 	}
 
+	cfg.ExpandPaths()
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -116,4 +121,21 @@ func (s *Settings) Validate() error {
 		}
 	}
 	return nil
+}
+
+// ExpandPaths expands tilde (~) characters in path configurations.
+func (s *Settings) ExpandPaths() {
+	for i, p := range s.WatchList {
+		s.WatchList[i] = expandTilde(p)
+	}
+}
+
+func expandTilde(path string) string {
+	if path == "~" {
+		return homeDirFn()
+	}
+	if len(path) > 2 && path[:2] == "~/" {
+		return filepath.Join(homeDirFn(), path[2:])
+	}
+	return path
 }
