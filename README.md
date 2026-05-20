@@ -9,6 +9,7 @@
 - **定期寫出**：每個 `batchPeriod`（預設 1 小時）將統計資料寫入 `~/.config/file_watcher/stats/YYYY-MM-DDTHH.json`
 - **保留管理**：自動刪除超過 `stats_retention_days`（預設 7 天）的舊統計檔案
 - **增長報告**：透過 `show` 子命令以橫條圖顯示檔案大小變化
+- **Slack 通知**：當設定了環境變數時，自動將統計摘要同步發送至 Slack 頻道（多重通知器架構）
 
 ## 安裝
 
@@ -49,6 +50,18 @@ go build -o file_watcher .
 ./file_watcher export
 ```
 
+### 啟用 Slack 通知功能
+
+本服務支援將定期產生的統計報告發送至 `Slack` 頻道中。您只需在啟動服務前設定以下環境變數即可：
+
+```bash
+export SLACK_BOT_TOKEN="xoxb-your-bot-token"
+export SLACK_CHANNEL_ID="Cyourchannelid"
+./file_watcher
+```
+
+程式啟動時若偵測到這些環境變數，會自動加載 `SlackNotifier` 並與 `StdoutNotifier` 併用，在發送本機日誌的同時，將統計摘要同步發送至 `Slack`。
+
 ## 設定檔案
 
 設定檔案位於 `~/.config/file_watcher/settings.json`（自動建立）：
@@ -85,13 +98,13 @@ main.go          # 進入點，初始化所有元件並處理子命令
   ├── watcher.go      # fsnotify 包裝器，處理檔案事件
   ├── stats.go        # StatsCollector 介面與實作
   ├── scheduler.go    # 定期執行 flush 與 prune
-  └── notifier.go     # 通知介面（目前為 stdout）
+  └── notifier.go     # 通知介面與其實作（包含 stdout 與 Slack）
 ```
 
 ### 核心介面（ISP + DIP）
 
 - **StatsCollector**：`AddOrUpdate`、`Remove`、`FlushHour`、`Prune`、`Clear`
-- **Notifier**：`Notify(summary string) error`
+- **Notifier**：`Notify(summary string) error`（實作包含 `StdoutNotifier`、`SlackNotifier`、`MultiNotifier`）
 - **WatcherOps**：`Add`、`Start`、`Close`
 
 ### 資料流向
@@ -100,7 +113,7 @@ main.go          # 進入點，初始化所有元件並處理子命令
 2. Handler 呼叫 `collector.AddOrUpdate(path, size, modTime)` 記錄檔案變更
 3. `Scheduler.run()` 每隔 `batchPeriod` 呼叫 `flush()`
 4. `flush()` 將統計寫入 `~/.config/file_watcher/stats/YYYY-MM-DDTHH.json`
-5. `Notifier.Notify()` 輸出摘要到標準輸出
+5. `Notifier.Notify()` 將統計摘要同步輸出至主控台與 `Slack`（若有配置環境變數）
 
 ### 統計資料格式
 
@@ -145,6 +158,7 @@ go test -race ./...         # 使用 race 檢測器執行測試
 - `stats_test.go` — 統計收集器的單元測試
 - `watcher_test.go` — 檔案監控邏輯測試
 - `show_test.go` — show 子命令的單元測試（formatBytes、computeGrowth）
+- `notifier_test.go` — 通知器與 Mock Slack API 伺服器測試
 
 ## 預設設定
 
