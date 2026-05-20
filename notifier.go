@@ -19,3 +19,27 @@ func (s *StdoutNotifier) Notify(summary string) error {
 	fmt.Println(summary)
 	return nil
 }
+
+// MultiNotifier composites multiple notifiers.
+type MultiNotifier struct {
+	notifiers []Notifier
+}
+
+// NewMultiNotifier creates a new MultiNotifier.
+func NewMultiNotifier(notifiers ...Notifier) *MultiNotifier {
+	return &MultiNotifier{notifiers: notifiers}
+}
+
+// Notify implements Notifier by routing notifications to all registered notifiers.
+func (m *MultiNotifier) Notify(summary string) error {
+	var errs []error
+	for _, n := range m.notifiers {
+		if err := n.Notify(summary); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("some notifiers failed: %v", errs)
+	}
+	return nil
+}
