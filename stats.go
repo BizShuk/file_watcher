@@ -17,6 +17,9 @@ type StatsCollector interface {
 	FlushHour() error
 	Prune(retentionDays int) error
 	Clear()
+	AddWarning(msg string)
+	GetWarnings() []string
+	ClearWarnings()
 }
 
 // StatEntry holds the latest size and modification time for a file path.
@@ -44,6 +47,7 @@ type fsStatsCollector struct {
 	data       map[string]StatEntry
 	hour       time.Time     // the hour bucket being collected
 	statsDirFn func() string // injectable for testing
+	warnings   []string
 }
 
 // NewStatsCollector creates a new collector starting at the current hour.
@@ -157,4 +161,27 @@ func (c *fsStatsCollector) Prune(retentionDays int) error {
 // defaultStatsDir is the production implementation.
 func defaultStatsDir() string {
 	return filepath.Join(os.Getenv("HOME"), ".config", "file_watcher", "stats")
+}
+
+// AddWarning appends a warning message.
+func (c *fsStatsCollector) AddWarning(msg string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.warnings = append(c.warnings, msg)
+}
+
+// GetWarnings returns a copy of the collected warning messages.
+func (c *fsStatsCollector) GetWarnings() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	res := make([]string, len(c.warnings))
+	copy(res, c.warnings)
+	return res
+}
+
+// ClearWarnings resets the warning list.
+func (c *fsStatsCollector) ClearWarnings() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.warnings = nil
 }

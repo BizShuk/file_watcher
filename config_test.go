@@ -149,8 +149,9 @@ func TestDefaultConfigCreation(t *testing.T) {
 		t.Fatalf("Load() failed: %v", err)
 	}
 
-	if len(cfg.WatchList) != 1 || cfg.WatchList[0] != "/tmp" {
-		t.Errorf("unexpected watch_list from default: %v", cfg.WatchList)
+	expectedPath := filepath.Join(tmpDir, "projects")
+	if len(cfg.WatchList) != 1 || cfg.WatchList[0] != expectedPath {
+		t.Errorf("unexpected watch_list from default: %v, expected %q", cfg.WatchList, expectedPath)
 	}
 	if cfg.BatchPeriod != "1h" {
 		t.Errorf("expected default batch_period=1h, got %q", cfg.BatchPeriod)

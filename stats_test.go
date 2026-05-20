@@ -173,3 +173,20 @@ func TestRoundHour(t *testing.T) {
 		})
 	}
 }
+
+func TestStatsCollector_Warnings(t *testing.T) {
+	c := NewStatsCollector()
+	c.AddWarning("warn1")
+	c.AddWarning("warn2")
+
+	w := c.GetWarnings()
+	if len(w) != 2 || w[0] != "warn1" || w[1] != "warn2" {
+		t.Errorf("unexpected warnings: %v", w)
+	}
+
+	c.ClearWarnings()
+	w = c.GetWarnings()
+	if len(w) != 0 {
+		t.Errorf("expected empty warnings after clear, got %v", w)
+	}
+}

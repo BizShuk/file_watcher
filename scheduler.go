@@ -50,6 +50,9 @@ func (s *Scheduler) run() {
 }
 
 func (s *Scheduler) flush() {
+	// Retrieve warnings before clearing collector.
+	warnings := s.collector.GetWarnings()
+
 	if err := s.collector.FlushHour(); err != nil {
 		fmt.Fprintf(os.Stderr, "flush error: %v\n", err)
 		return
@@ -61,8 +64,15 @@ func (s *Scheduler) flush() {
 		fmt.Fprintf(os.Stderr, "prune error: %v\n", err)
 	}
 
-	// TODO: build summary string from collector for notifier
 	message := fmt.Sprintf("[%s] Stats flushed and pruned", time.Now().Format(time.RFC3339))
+	if len(warnings) > 0 {
+		message += "\n\n⚠️ Warnings during file monitoring:"
+		for _, w := range warnings {
+			message += fmt.Sprintf("\n- %s", w)
+		}
+	}
+	s.collector.ClearWarnings()
+
 	if err := s.notifier.Notify(message); err != nil {
 		fmt.Fprintf(os.Stderr, "notify error: %v\n", err)
 	}

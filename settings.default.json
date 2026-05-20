@@ -1,6 +1,6 @@
 {
   "watch_list": [
-    "/tmp"
+    "~/projects"
   ],
   "exclude_list": [
     ".git"

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/charmbracelet/log"
 	"github.com/fsnotify/fsnotify"
@@ -21,6 +22,7 @@ type WatcherOps interface {
 	Add(path string) error
 	Start(handler FileHandler) error
 	Close() error
+	GetWarnings() []string
 }
 
 // fsWatcher wraps fsnotify.Watcher and implements WatcherOps.
@@ -28,6 +30,8 @@ type fsWatcher struct {
 	wrapped     *fsnotify.Watcher
 	done        chan struct{}
 	excludeList []string
+	warnings    []string
+	warnMu      sync.Mutex
 }
 
 // NewWatcher creates a new fsWatcher.
@@ -36,16 +40,32 @@ func NewWatcher(excludeList []string) (*fsWatcher, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
 	}
-	return &fsWatcher{wrapped: w, done: make(chan struct{}), excludeList: excludeList}, nil
+	return &fsWatcher{
+		wrapped:     w,
+		done:        make(chan struct{}),
+		excludeList: excludeList,
+	}, nil
 }
 
 // Add registers a path to be watched.
 // If path is a directory, it is watched recursively.
 func (w *fsWatcher) Add(path string) error {
-	info, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("stat path %q: %w", path, err)
+	isBroken, target := w.checkBrokenSymlink(path)
+	if isBroken {
+		w.addWarning(fmt.Sprintf("broken symlink detected: %s -> %s (target not found)", path, target))
+		return nil
 	}
+
+	info, err := os.Lstat(path)
+	if err != nil {
+		return fmt.Errorf("lstat path %q: %w", path, err)
+	}
+
+	// purely monitor the soft link itself
+	if info.Mode()&os.ModeSymlink != 0 {
+		return w.wrapped.Add(path)
+	}
+
 	if info.IsDir() {
 		err := w.watchedWalk(path, func(p string) error {
 			return w.wrapped.Add(p)
@@ -64,6 +84,15 @@ func (w *fsWatcher) watchedWalk(root string, fn func(string) error) error {
 		if err != nil {
 			return nil // skip inaccessible entries
 		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			isBroken, target := w.checkBrokenSymlink(p)
+			if isBroken {
+				w.addWarning(fmt.Sprintf("broken symlink detected: %s -> %s (target not found)", p, target))
+			}
+			return nil
+		}
+
 		for _, ext := range w.excludeList {
 			if strings.HasSuffix(p, ext) {
 				if info.IsDir() {
@@ -74,11 +103,49 @@ func (w *fsWatcher) watchedWalk(root string, fn func(string) error) error {
 		}
 		if info.IsDir() {
 			if err := fn(p); err != nil {
-				return err
+				w.addWarning(fmt.Sprintf("failed to watch directory %s: %v", p, err))
+				log.Warn("Failed to watch directory", "path", p, "err", err)
 			}
 		}
 		return nil
 	})
+}
+
+// GetWarnings returns all warnings collected during execution.
+func (w *fsWatcher) GetWarnings() []string {
+	w.warnMu.Lock()
+	defer w.warnMu.Unlock()
+	res := make([]string, len(w.warnings))
+	copy(res, w.warnings)
+	return res
+}
+
+func (w *fsWatcher) addWarning(msg string) {
+	w.warnMu.Lock()
+	defer w.warnMu.Unlock()
+	w.warnings = append(w.warnings, msg)
+}
+
+func (w *fsWatcher) checkBrokenSymlink(path string) (bool, string) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return false, ""
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		target, err := os.Readlink(path)
+		if err != nil {
+			return true, ""
+		}
+		absTarget := target
+		if !filepath.IsAbs(target) {
+			absTarget = filepath.Join(filepath.Dir(path), target)
+		}
+		_, err = os.Stat(absTarget)
+		if err != nil && os.IsNotExist(err) {
+			return true, target
+		}
+	}
+	return false, ""
 }
 
 // Start begins watching and dispatches events to the handler.

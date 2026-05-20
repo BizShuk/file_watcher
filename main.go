@@ -60,6 +60,9 @@ func main() {
 	}
 
 	collector := NewStatsCollector()
+	for _, warn := range watcher.GetWarnings() {
+		collector.AddWarning(warn)
+	}
 	handler := func(event fsnotify.Event) {
 		var path string = event.Name
 		var size int64 = 0
