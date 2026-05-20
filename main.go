@@ -31,6 +31,12 @@ func main() {
 				os.Exit(1)
 			}
 			return
+		case "test-slack":
+			if err := runTestSlack(); err != nil {
+				fmt.Fprintf(os.Stderr, "test-slack: %v\n", err)
+				os.Exit(1)
+			}
+			return
 		}
 	}
 
