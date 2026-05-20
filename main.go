@@ -82,7 +82,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	notifier := &StdoutNotifier{}
+	var notifiers []Notifier
+	notifiers = append(notifiers, &StdoutNotifier{})
+
+	slackToken := os.Getenv("SLACK_BOT_TOKEN")
+	slackChannel := os.Getenv("SLACK_CHANNEL_ID")
+	if slackToken != "" && slackChannel != "" {
+		log.Info("Slack notification enabled", "channel", slackChannel)
+		notifiers = append(notifiers, NewSlackNotifier(slackToken, slackChannel))
+	}
+
+	notifier := NewMultiNotifier(notifiers...)
 	sched := NewScheduler(collector, notifier, period, cfg.StatsRetentionDays)
 	if err := sched.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "start scheduler: %v\n", err)
