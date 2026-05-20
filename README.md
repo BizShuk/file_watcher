@@ -68,26 +68,26 @@ export SLACK_CHANNEL_ID="Cyourchannelid"
 
 ```json
 {
-  "watch_list": ["/tmp"],
-  "exclude_list": [".git"],
-  "admin": {
-    "name": "admin",
-    "email": "admin@localhost",
-    "webhook_url": ""
-  },
-  "batch_period": "1h",
-  "stats_retention_days": 7
+    "watch_list": ["/tmp"],
+    "exclude_list": [".git"],
+    "admin": {
+        "name": "admin",
+        "email": "admin@localhost",
+        "webhook_url": ""
+    },
+    "batch_period": "1h",
+    "stats_retention_days": 7
 }
 ```
 
 ### 設定欄位說明
 
-| 欄位 | 類型 | 說明 |
-|------|------|------|
-| `watch_list` | `[]string` | 要監控的目錄或檔案路徑（支援使用 `~` 代表家目錄） |
-| `exclude_list` | `[]string` | 要排除的副檔名（例如 `.git`） |
-| `batch_period` | `string` | 統計寫出的間隔時間（例如 `1h`、`30m`） |
-| `stats_retention_days` | `int` | 統計檔案的保留天數 |
+| 欄位                   | 類型       | 說明                                              |
+| ---------------------- | ---------- | ------------------------------------------------- |
+| `watch_list`           | `[]string` | 要監控的目錄或檔案路徑（支援使用 `~` 代表家目錄） |
+| `exclude_list`         | `[]string` | 要排除的副檔名（例如 `.git`）                     |
+| `batch_period`         | `string`   | 統計寫出的間隔時間（例如 `1h`、`30m`）            |
+| `stats_retention_days` | `int`      | 統計檔案的保留天數                                |
 
 ## 架構
 
@@ -121,14 +121,14 @@ main.go          # 進入點，初始化所有元件並處理子命令
 
 ```json
 {
-  "date": "2026-05-20T01:00:00Z",
-  "entries": [
-    {
-      "path": "/tmp/example.txt",
-      "size_bytes": 1024,
-      "last_modified": "2026-05-20T00:30:00Z"
-    }
-  ]
+    "date": "2026-05-20T01:00:00Z",
+    "entries": [
+        {
+            "path": "/tmp/example.txt",
+            "size_bytes": 1024,
+            "last_modified": "2026-05-20T00:30:00Z"
+        }
+    ]
 }
 ```
 
@@ -166,10 +166,10 @@ go test -race ./...         # 使用 race 檢測器執行測試
 
 ```json
 {
-  "watch_list": ["/tmp"],
-  "exclude_list": [".git"],
-  "batch_period": "1h",
-  "stats_retention_days": 7
+    "watch_list": ["/tmp"],
+    "exclude_list": [".git"],
+    "batch_period": "1h",
+    "stats_retention_days": 7
 }
 ```
 
