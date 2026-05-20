@@ -86,19 +86,34 @@ func main() {
 		collector.AddOrUpdate(path, size, time.Unix(modTime, 0))
 	}
 
-	if err := watcher.Start(handler); err != nil {
-		fmt.Fprintf(os.Stderr, "start watcher: %v\n", err)
-		os.Exit(1)
-	}
+	go func() {
+		if err := watcher.Start(handler); err != nil {
+			fmt.Fprintf(os.Stderr, "start watcher: %v\n", err)
+			os.Exit(1)
+		}
+	}()
 
 	var notifiers []Notifier
 	notifiers = append(notifiers, &StdoutNotifier{})
 
 	slackToken := os.Getenv("SLACK_BOT_TOKEN")
 	slackChannel := os.Getenv("SLACK_CHANNEL_ID")
+	fmt.Println("Slack 憑證已偵測 (Slack credentials detected)", "token", slackToken, "channel", slackChannel)
 	if slackToken != "" && slackChannel != "" {
-		log.Info("Slack notification enabled", "channel", slackChannel)
-		notifiers = append(notifiers, NewSlackNotifier(slackToken, slackChannel))
+		log.Info("Slack 憑證已偵測 (Slack credentials detected)", "channel", slackChannel)
+		slackNotifier := NewSlackNotifier(slackToken, slackChannel)
+		notifiers = append(notifiers, slackNotifier)
+
+		// 於啟動時發送測試訊息 (Send test message at startup)
+		testMsg := fmt.Sprintf("Slack 啟動測試訊息 (Slack Startup Test Message) - 啟動時間: %s", time.Now().Format(time.RFC3339))
+		log.Info("正在發送啟動測試訊息至 Slack (Sending startup test message to Slack)...")
+		if err := slackNotifier.Notify(testMsg); err != nil {
+			log.Error("發送啟動測試訊息至 Slack 失敗 (Failed to send startup test message to Slack)", "error", err)
+		} else {
+			log.Info("啟動測試訊息發送成功 (Startup test message sent successfully)")
+		}
+	} else {
+		log.Info("未偵測到 Slack 憑證 (Slack credentials not detected)")
 	}
 
 	notifier := NewMultiNotifier(notifiers...)
