@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/charmbracelet/log"
 )
@@ -55,10 +56,5 @@ func LoadOrCreate(path string, defaultJSON string, out interface{}) error {
 
 // dir returns the directory component of path (empty if no parent).
 func dir(path string) string {
-	for i := len(path) - 1; i >= 0; i-- {
-		if path[i] == '/' {
-			return path[:i]
-		}
-	}
-	return ""
+	return filepath.Dir(path)
 }

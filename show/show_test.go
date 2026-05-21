@@ -1,7 +1,10 @@
-package main
+package show
 
 import (
 	"testing"
+	"time"
+
+	"github.com/shuk/file_watcher/stats"
 )
 
 func TestFormatBytes(t *testing.T) {
@@ -30,7 +33,7 @@ func TestFormatBytes(t *testing.T) {
 }
 
 func TestComputeGrowth(t *testing.T) {
-	entries := map[string][]StatFileEntry{
+	entries := map[string][]stats.Entry{
 		"/tmp/test1.txt": {
 			{Path: "/tmp/test1.txt", Size: 1000, LastModified: parseTime("2026-05-18T10:00:00Z")},
 			{Path: "/tmp/test1.txt", Size: 2000, LastModified: parseTime("2026-05-18T11:00:00Z")},
@@ -47,20 +50,17 @@ func TestComputeGrowth(t *testing.T) {
 		t.Errorf("expected 2 entries, got %d", len(growth))
 	}
 
-	// Build a map for easy lookup
 	growthMap := make(map[string]GrowthEntry)
 	for _, g := range growth {
 		growthMap[g.Path] = g
 	}
 
-	// Check test1.txt
 	if e, ok := growthMap["/tmp/test1.txt"]; !ok {
 		t.Errorf("expected entry for /tmp/test1.txt")
 	} else if e.SizeChange != 1000 {
 		t.Errorf("expected SizeChange=1000 for test1.txt, got %d", e.SizeChange)
 	}
 
-	// Check test2.txt
 	if e, ok := growthMap["/tmp/test2.txt"]; !ok {
 		t.Errorf("expected entry for /tmp/test2.txt")
 	} else if e.SizeChange != -500 {
@@ -69,7 +69,7 @@ func TestComputeGrowth(t *testing.T) {
 }
 
 func TestComputeGrowthNewFile(t *testing.T) {
-	entries := map[string][]StatFileEntry{
+	entries := map[string][]stats.Entry{
 		"/tmp/new.txt": {
 			{Path: "/tmp/new.txt", Size: 5000, LastModified: parseTime("2026-05-18T11:00:00Z")},
 		},
@@ -83,4 +83,9 @@ func TestComputeGrowthNewFile(t *testing.T) {
 	if !growth[0].IsNew {
 		t.Errorf("expected IsNew=true, got %v", growth[0].IsNew)
 	}
+}
+
+func parseTime(s string) time.Time {
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
 }

@@ -1,4 +1,4 @@
-package main
+package watcher
 
 import (
 	"context"
@@ -12,30 +12,30 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-// FileHandler is called for each file event.
-// (ISP: focused callback interface, no fat methods)
-type FileHandler func(event fsnotify.Event)
+// Handler is called for each file event.
+type Handler func(path string, op fsnotify.Op) error
 
-// WatcherOps defines the file-watcher operations.
-// (DIP: main.go depends on this abstraction, not fsnotify directly)
-type WatcherOps interface {
+// Watcher defines the file-watcher operations.
+type Watcher interface {
 	Add(path string) error
-	Start(handler FileHandler) error
+	Start(ctx context.Context, handler Handler) error
 	Close() error
 	GetWarnings() []string
 }
 
-// fsWatcher wraps fsnotify.Watcher and implements WatcherOps.
+// fsWatcher wraps fsnotify.Watcher and implements Watcher.
 type fsWatcher struct {
 	wrapped     *fsnotify.Watcher
 	done        chan struct{}
+	doneOnce    sync.Once
 	excludeList []string
 	warnings    []string
 	warnMu      sync.Mutex
+	wg          sync.WaitGroup
 }
 
-// NewWatcher creates a new fsWatcher.
-func NewWatcher(excludeList []string) (*fsWatcher, error) {
+// New creates a new fsWatcher.
+func New(excludeList []string) (*fsWatcher, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
@@ -48,7 +48,6 @@ func NewWatcher(excludeList []string) (*fsWatcher, error) {
 }
 
 // Add registers a path to be watched.
-// If path is a directory, it is watched recursively.
 func (w *fsWatcher) Add(path string) error {
 	isBroken, target := w.checkBrokenSymlink(path)
 	if isBroken {
@@ -61,7 +60,6 @@ func (w *fsWatcher) Add(path string) error {
 		return fmt.Errorf("lstat path %q: %w", path, err)
 	}
 
-	// purely monitor the soft link itself
 	if info.Mode()&os.ModeSymlink != 0 {
 		return w.wrapped.Add(path)
 	}
@@ -78,11 +76,10 @@ func (w *fsWatcher) Add(path string) error {
 	return w.wrapped.Add(path)
 }
 
-// watchedWalk recursively processes a directory tree.
 func (w *fsWatcher) watchedWalk(root string, fn func(string) error) error {
 	return filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // skip inaccessible entries
+			return nil
 		}
 
 		if info.Mode()&os.ModeSymlink != 0 {
@@ -111,21 +108,6 @@ func (w *fsWatcher) watchedWalk(root string, fn func(string) error) error {
 	})
 }
 
-// GetWarnings returns all warnings collected during execution.
-func (w *fsWatcher) GetWarnings() []string {
-	w.warnMu.Lock()
-	defer w.warnMu.Unlock()
-	res := make([]string, len(w.warnings))
-	copy(res, w.warnings)
-	return res
-}
-
-func (w *fsWatcher) addWarning(msg string) {
-	w.warnMu.Lock()
-	defer w.warnMu.Unlock()
-	w.warnings = append(w.warnings, msg)
-}
-
 func (w *fsWatcher) checkBrokenSymlink(path string) (bool, string) {
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -148,11 +130,18 @@ func (w *fsWatcher) checkBrokenSymlink(path string) (bool, string) {
 	return false, ""
 }
 
+func (w *fsWatcher) addWarning(msg string) {
+	w.warnMu.Lock()
+	defer w.warnMu.Unlock()
+	w.warnings = append(w.warnings, msg)
+}
+
 // Start begins watching and dispatches events to the handler.
-// It blocks until Close is called or an error occurs.
-func (w *fsWatcher) Start(handler FileHandler) error {
-	ctx, cancel := context.WithCancel(context.Background())
+func (w *fsWatcher) Start(ctx context.Context, handler Handler) error {
+	ctx, cancel := context.WithCancel(ctx)
+	w.wg.Add(1)
 	go func() {
+		defer w.wg.Done()
 		for {
 			select {
 			case <-w.done:
@@ -173,10 +162,11 @@ func (w *fsWatcher) Start(handler FileHandler) error {
 				}
 				log.Info("Event", "name", event.Name, "op", event.Op)
 
-				handler(event)
+				if err := handler(event.Name, event.Op); err != nil {
+					log.Warn("handler error", "path", event.Name, "err", err)
+				}
 			case err := <-w.wrapped.Errors:
-				// Log and continue — many fsnotify errors are transient.
-				fmt.Fprintf(os.Stderr, "watcher error: %v\n", err)
+				log.Warn("watcher error", "err", err)
 			}
 		}
 	}()
@@ -186,9 +176,18 @@ func (w *fsWatcher) Start(handler FileHandler) error {
 
 // Close stops the watcher and releases resources.
 func (w *fsWatcher) Close() error {
-	if w.done != nil {
+	w.doneOnce.Do(func() {
 		close(w.done)
-		w.done = nil
-	}
+	})
+	w.wg.Wait()
 	return w.wrapped.Close()
+}
+
+// GetWarnings returns all collected warnings.
+func (w *fsWatcher) GetWarnings() []string {
+	w.warnMu.Lock()
+	defer w.warnMu.Unlock()
+	res := make([]string, len(w.warnings))
+	copy(res, w.warnings)
+	return res
 }

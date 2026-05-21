@@ -5,6 +5,8 @@
 
 set -e
 
+ulimit -n 65536
+
 # 定義變數
 OS="$(uname -s)"
 BINARY_NAME="file_watcher"

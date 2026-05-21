@@ -1,6 +1,7 @@
-package main
+package stats
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -9,8 +10,8 @@ import (
 	"time"
 )
 
-func TestNewStatsCollector(t *testing.T) {
-	c := NewStatsCollector()
+func TestCollector_NewCollector(t *testing.T) {
+	c := NewCollector(t.TempDir())
 	if c == nil {
 		t.Fatal("expected non-nil collector")
 	}
@@ -19,8 +20,8 @@ func TestNewStatsCollector(t *testing.T) {
 	}
 }
 
-func TestAddOrUpdate(t *testing.T) {
-	c := NewStatsCollector()
+func TestCollector_AddOrUpdate(t *testing.T) {
+	c := NewCollector(t.TempDir())
 	now := time.Now()
 
 	c.AddOrUpdate("/tmp/test.log", 1024, now)
@@ -40,8 +41,8 @@ func TestAddOrUpdate(t *testing.T) {
 	}
 }
 
-func TestAddOrUpdate_overwrites(t *testing.T) {
-	c := NewStatsCollector()
+func TestCollector_AddOrUpdate_overwrites(t *testing.T) {
+	c := NewCollector(t.TempDir())
 	now := time.Now()
 
 	c.AddOrUpdate("/tmp/test.log", 1024, now)
@@ -56,8 +57,21 @@ func TestAddOrUpdate_overwrites(t *testing.T) {
 	}
 }
 
-func TestClear(t *testing.T) {
-	c := NewStatsCollector()
+func TestCollector_Remove(t *testing.T) {
+	c := NewCollector(t.TempDir())
+	c.AddOrUpdate("/tmp/test.log", 1024, time.Now())
+	c.Remove("/tmp/test.log")
+
+	c.mu.RLock()
+	_, ok := c.data["/tmp/test.log"]
+	c.mu.RUnlock()
+	if ok {
+		t.Error("expected entry to be removed")
+	}
+}
+
+func TestCollector_Clear(t *testing.T) {
+	c := NewCollector(t.TempDir())
 	c.AddOrUpdate("/tmp/test.log", 1024, time.Now())
 	c.Clear()
 
@@ -68,35 +82,32 @@ func TestClear(t *testing.T) {
 	c.mu.RUnlock()
 }
 
-func TestFlushHour_empty(t *testing.T) {
-	c := NewStatsCollector()
-	c.statsDirFn = func() string { return t.TempDir() }
-	err := c.FlushHour()
+func TestCollector_FlushHour_empty(t *testing.T) {
+	c := NewCollector(t.TempDir())
+	err := c.FlushHour(context.Background())
 	if err != nil {
 		t.Fatalf("expected no error for empty flush, got %v", err)
 	}
 }
 
-func TestFlushHour(t *testing.T) {
-	c := NewStatsCollector()
+func TestCollector_FlushHour(t *testing.T) {
 	tmpDir := t.TempDir()
-	c.statsDirFn = func() string { return tmpDir }
+	c := NewCollector(tmpDir)
 
 	c.AddOrUpdate("/tmp/a.log", 1024, time.Now())
 	c.AddOrUpdate("/tmp/b.log", 2048, time.Now())
 
-	err := c.FlushHour()
+	err := c.FlushHour(context.Background())
 	if err != nil {
 		t.Fatalf("FlushHour returned error: %v", err)
 	}
 
-	// Use the same hour that FlushHour used.
 	filename := c.hour.Format("2006-01-02T15") + ".json"
 	fpath := filepath.Join(tmpDir, filename)
 
 	data, err := os.ReadFile(fpath)
 	if err != nil {
-		t.Fatalf("expected stats file at %s, got error: %v\nls dir: %v", fpath, err, listDir(tmpDir))
+		t.Fatalf("expected stats file at %s, got error: %v", fpath, err)
 	}
 
 	var sf StatFile
@@ -112,20 +123,10 @@ func TestFlushHour(t *testing.T) {
 	}
 }
 
-func listDir(dir string) []string {
-	entries, _ := os.ReadDir(dir)
-	var names []string
-	for _, e := range entries {
-		names = append(names, e.Name())
-	}
-	return names
-}
-
-func TestFlushHour_clearsData(t *testing.T) {
-	c := NewStatsCollector()
-	c.statsDirFn = func() string { return t.TempDir() }
+func TestCollector_FlushHour_clearsData(t *testing.T) {
+	c := NewCollector(t.TempDir())
 	c.AddOrUpdate("/tmp/test.log", 1024, time.Now())
-	c.FlushHour()
+	c.FlushHour(context.Background())
 	c.Clear()
 
 	c.mu.RLock()
@@ -135,8 +136,8 @@ func TestFlushHour_clearsData(t *testing.T) {
 	c.mu.RUnlock()
 }
 
-func TestConcurrentAddOrUpdate(t *testing.T) {
-	c := NewStatsCollector()
+func TestCollector_ConcurrentAddOrUpdate(t *testing.T) {
+	c := NewCollector(t.TempDir())
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
@@ -154,7 +155,7 @@ func TestConcurrentAddOrUpdate(t *testing.T) {
 	}
 }
 
-func TestRoundHour(t *testing.T) {
+func TestCollector_RoundHour(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
@@ -171,22 +172,5 @@ func TestRoundHour(t *testing.T) {
 				t.Errorf("roundHour(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
 		})
-	}
-}
-
-func TestStatsCollector_Warnings(t *testing.T) {
-	c := NewStatsCollector()
-	c.AddWarning("warn1")
-	c.AddWarning("warn2")
-
-	w := c.GetWarnings()
-	if len(w) != 2 || w[0] != "warn1" || w[1] != "warn2" {
-		t.Errorf("unexpected warnings: %v", w)
-	}
-
-	c.ClearWarnings()
-	w = c.GetWarnings()
-	if len(w) != 0 {
-		t.Errorf("expected empty warnings after clear, got %v", w)
 	}
 }

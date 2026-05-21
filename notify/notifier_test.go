@@ -1,6 +1,7 @@
-package main
+package notify
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -15,17 +16,17 @@ type mockNotifier struct {
 	err    error
 }
 
-func (m *mockNotifier) Notify(summary string) error {
+func (m *mockNotifier) Notify(ctx context.Context, summary string) error {
 	m.called = true
 	return m.err
 }
 
-func TestMultiNotifier_Notify(t *testing.T) {
+func TestMulti_Notify(t *testing.T) {
 	n1 := &mockNotifier{}
 	n2 := &mockNotifier{}
 
-	multi := NewMultiNotifier(n1, n2)
-	err := multi.Notify("test message")
+	multi := NewMulti(n1, n2)
+	err := multi.Notify(context.Background(), "test message")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -35,12 +36,12 @@ func TestMultiNotifier_Notify(t *testing.T) {
 	}
 }
 
-func TestMultiNotifier_Notify_WithError(t *testing.T) {
+func TestMulti_Notify_WithError(t *testing.T) {
 	n1 := &mockNotifier{err: errors.New("fail")}
 	n2 := &mockNotifier{}
 
-	multi := NewMultiNotifier(n1, n2)
-	err := multi.Notify("test message")
+	multi := NewMulti(n1, n2)
+	err := multi.Notify(context.Background(), "test message")
 	if err == nil {
 		t.Error("expected error, got nil")
 	}
@@ -65,7 +66,7 @@ func TestSlackNotifier_Notify(t *testing.T) {
 	notifier := NewSlackNotifier("fake-token", "fake-channel")
 	notifier.client = slack.New("fake-token", slack.OptionAPIURL(server.URL+"/"))
 
-	err := notifier.Notify("hello from test")
+	err := notifier.Notify(context.Background(), "hello from test")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"os"
@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-func TestLoadFrom(t *testing.T) {
-	// Helper to create a temp config file and load it via loadFrom.
+func TestLoader_LoadFrom(t *testing.T) {
 	tmp := func(content string) string {
 		t.Helper()
 		f := filepath.Join(t.TempDir(), "settings.json")
@@ -17,7 +16,9 @@ func TestLoadFrom(t *testing.T) {
 	}
 
 	t.Run("valid minimal config", func(t *testing.T) {
-		cfg, err := loadFrom(tmp(`{"watch_list": ["/tmp"]}`))
+		l := NewLoader(t.TempDir())
+		path := tmp(`{"watch_list": ["/tmp"]}`)
+		cfg, err := l.loadFrom(path)
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -27,7 +28,8 @@ func TestLoadFrom(t *testing.T) {
 	})
 
 	t.Run("default batch_period", func(t *testing.T) {
-		cfg, err := loadFrom(tmp(`{"watch_list": ["/tmp"]}`))
+		l := NewLoader(t.TempDir())
+		cfg, err := l.loadFrom(tmp(`{"watch_list": ["/tmp"]}`))
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -37,7 +39,8 @@ func TestLoadFrom(t *testing.T) {
 	})
 
 	t.Run("default stats_retention_days", func(t *testing.T) {
-		cfg, err := loadFrom(tmp(`{"watch_list": ["/tmp"]}`))
+		l := NewLoader(t.TempDir())
+		cfg, err := l.loadFrom(tmp(`{"watch_list": ["/tmp"]}`))
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -47,42 +50,48 @@ func TestLoadFrom(t *testing.T) {
 	})
 
 	t.Run("invalid batch_period", func(t *testing.T) {
-		_, err := loadFrom(tmp(`{"watch_list": ["/tmp"], "batch_period": "not-a-duration"}`))
+		l := NewLoader(t.TempDir())
+		_, err := l.loadFrom(tmp(`{"watch_list": ["/tmp"], "batch_period": "not-a-duration"}`))
 		if err == nil {
 			t.Fatal("expected error for invalid batch_period")
 		}
 	})
 
 	t.Run("missing watch_list", func(t *testing.T) {
-		_, err := loadFrom(tmp(`{}`))
+		l := NewLoader(t.TempDir())
+		_, err := l.loadFrom(tmp(`{}`))
 		if err == nil {
 			t.Fatal("expected error for missing watch_list")
 		}
 	})
 
 	t.Run("empty watch_list", func(t *testing.T) {
-		_, err := loadFrom(tmp(`{"watch_list": []}`))
+		l := NewLoader(t.TempDir())
+		_, err := l.loadFrom(tmp(`{"watch_list": []}`))
 		if err == nil {
 			t.Fatal("expected error for empty watch_list")
 		}
 	})
 
 	t.Run("empty path in watch_list", func(t *testing.T) {
-		_, err := loadFrom(tmp(`{"watch_list": ["/tmp", ""]}`))
+		l := NewLoader(t.TempDir())
+		_, err := l.loadFrom(tmp(`{"watch_list": ["/tmp", ""]}`))
 		if err == nil {
 			t.Fatal("expected error for empty path in watch_list")
 		}
 	})
 
 	t.Run("file not found", func(t *testing.T) {
-		_, err := loadFrom("/nonexistent/path/settings.json")
+		l := NewLoader(t.TempDir())
+		_, err := l.loadFrom("/nonexistent/path/settings.json")
 		if err == nil {
 			t.Fatal("expected error for nonexistent file")
 		}
 	})
 
 	t.Run("malformed JSON", func(t *testing.T) {
-		_, err := loadFrom(tmp(`{invalid json}`))
+		l := NewLoader(t.TempDir())
+		_, err := l.loadFrom(tmp(`{invalid json}`))
 		if err == nil {
 			t.Fatal("expected error for malformed JSON")
 		}
@@ -90,13 +99,8 @@ func TestLoadFrom(t *testing.T) {
 
 	t.Run("expand tilde in watch_list", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		oldHomeDirFn := homeDirFn
-		defer func() { homeDirFn = oldHomeDirFn }()
-		homeDirFn = func() string {
-			return tmpDir
-		}
-
-		cfg, err := loadFrom(tmp(`{"watch_list": ["~", "~/projects", "/tmp"]}`))
+		l := NewLoader(tmpDir)
+		cfg, err := l.loadFrom(tmp(`{"watch_list": ["~", "~/projects", "/tmp"]}`))
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -133,30 +137,24 @@ func TestBatchPeriodDuration(t *testing.T) {
 	})
 }
 
-func TestDefaultConfigCreation(t *testing.T) {
-	tmpDir := t.TempDir()
-	origHomeDirFn := homeDirFn
-	homeDirFn = func() string {
-		return tmpDir
-	}
-	t.Cleanup(func() {
-		homeDirFn = origHomeDirFn
+func TestLoader_Load(t *testing.T) {
+	t.Run("load creates default config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		l := NewLoader(tmpDir)
+		cfg, err := l.Load()
+		if err != nil {
+			t.Fatalf("Load() failed: %v", err)
+		}
+
+		expectedPath := filepath.Join(tmpDir, "projects")
+		if len(cfg.WatchList) != 1 || cfg.WatchList[0] != expectedPath {
+			t.Errorf("unexpected watch_list from default: %v, expected %q", cfg.WatchList, expectedPath)
+		}
+		if cfg.BatchPeriod != "1h" {
+			t.Errorf("expected default batch_period=1h, got %q", cfg.BatchPeriod)
+		}
+		if cfg.StatsRetentionDays != 7 {
+			t.Errorf("expected default stats_retention_days=7, got %d", cfg.StatsRetentionDays)
+		}
 	})
-
-	// Load() should create the file from embedded default
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load() failed: %v", err)
-	}
-
-	expectedPath := filepath.Join(tmpDir, "projects")
-	if len(cfg.WatchList) != 1 || cfg.WatchList[0] != expectedPath {
-		t.Errorf("unexpected watch_list from default: %v, expected %q", cfg.WatchList, expectedPath)
-	}
-	if cfg.BatchPeriod != "1h" {
-		t.Errorf("expected default batch_period=1h, got %q", cfg.BatchPeriod)
-	}
-	if cfg.StatsRetentionDays != 7 {
-		t.Errorf("expected default stats_retention_days=7, got %d", cfg.StatsRetentionDays)
-	}
 }
