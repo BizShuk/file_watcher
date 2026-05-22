@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
-	"github.com/charmbracelet/log"
-	"github.com/fsnotify/fsnotify"
 	"github.com/shuk/file_watcher/config"
 	"github.com/shuk/file_watcher/notify"
 	"github.com/shuk/file_watcher/scheduler"
@@ -35,7 +32,7 @@ type runtime struct {
 func wire(homeDir string, cfg *config.Settings) (*runtime, error) {
 	statsDir := filepath.Join(homeDir, ".config", "file_watcher", "stats")
 
-	// Build watcher
+	// Build watcher (FsWatcher)
 	w, err := watcher.New(cfg.ExcludeList)
 	if err != nil {
 		return nil, fmt.Errorf("create watcher: %w", err)
@@ -46,7 +43,7 @@ func wire(homeDir string, cfg *config.Settings) (*runtime, error) {
 		}
 	}
 
-	// Build stats collector
+	// Build collector
 	collector := stats.NewCollector(statsDir)
 
 	// Build warning sink
@@ -55,12 +52,32 @@ func wire(homeDir string, cfg *config.Settings) (*runtime, error) {
 	// Build notifier
 	notif := buildNotifier()
 
-	// Build scheduler
-	period, err := cfg.BatchPeriodDuration()
+	// Parse intervals
+	scanInterval, err := cfg.ScanIntervalDuration()
+	if err != nil {
+		return nil, fmt.Errorf("parse scan interval: %w", err)
+	}
+	batchPeriod, err := cfg.BatchPeriodDuration()
 	if err != nil {
 		return nil, fmt.Errorf("parse batch period: %w", err)
 	}
-	sched := scheduler.New(collector, warnings, notif, period, cfg.StatsRetentionDays)
+
+	// Build scheduler with chainable Every() API
+	sched := scheduler.New(collector, warnings, notif)
+
+	// Scan job: walk all watch_list paths and update collector
+	sched.Every("scan", scanInterval, func(ctx context.Context) error {
+		return w.Scan(ctx)
+	})
+
+	// Flush job: write stats to disk and prune old files
+	sched.Every("flush", batchPeriod, func(ctx context.Context) error {
+		if err := collector.FlushHour(ctx); err != nil {
+			return err
+		}
+		collector.Clear()
+		return collector.Prune(ctx, cfg.StatsRetentionDays)
+	})
 
 	return &runtime{
 		watcher:   w,
@@ -86,28 +103,7 @@ func buildNotifier() notify.Notifier {
 
 // run starts the watcher, scheduler, and blocks until signal.
 func run(ctx context.Context, r *runtime) error {
-	handler := func(path string, op fsnotify.Op) error {
-		var size int64 = 0
-		var modTime time.Time = time.Now()
-		fileInfo, err := os.Stat(path)
-		if err == nil {
-			size = fileInfo.Size()
-			modTime = fileInfo.ModTime()
-		}
-
-		if op.Has(fsnotify.Remove) {
-			r.collector.Remove(path)
-			return nil
-		}
-		r.collector.AddOrUpdate(path, size, modTime)
-		return nil
-	}
-
-	go func() {
-		if err := r.watcher.Start(ctx, handler); err != nil {
-			log.Error("start watcher", "err", err)
-		}
-	}()
+	// No more fsnotify goroutine — scan is now scheduler-driven
 
 	if err := r.sched.Start(ctx); err != nil {
 		return fmt.Errorf("start scheduler: %w", err)
