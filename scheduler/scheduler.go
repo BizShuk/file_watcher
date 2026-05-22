@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/shuk/file_watcher/notify"
@@ -11,13 +12,20 @@ import (
 	"github.com/shuk/file_watcher/warning"
 )
 
+// job represents a scheduled task with its own interval.
+type job struct {
+	name     string
+	interval time.Duration
+	fn       func(context.Context) error
+}
+
 // Scheduler periodically flushes stats and notifies via Notifier.
 type scheduler struct {
-	collector     stats.Flusher
-	warnings     *warning.Sink
-	notifier      notify.Notifier
-	batchPeriod   time.Duration
-	retentionDays int
+	collector stats.Flusher
+	warnings  *warning.Sink
+	notifier  notify.Notifier
+	jobs      []job
+	mu        sync.Mutex
 }
 
 // New creates a new scheduler.
@@ -25,35 +33,62 @@ func New(
 	collector stats.Flusher,
 	warnings *warning.Sink,
 	notifier notify.Notifier,
-	period time.Duration,
-	retentionDays int,
 ) *scheduler {
 	return &scheduler{
-		collector:     collector,
-		warnings:      warnings,
-		notifier:      notifier,
-		batchPeriod:   period,
-		retentionDays: retentionDays,
+		collector: collector,
+		warnings:  warnings,
+		notifier:  notifier,
 	}
 }
 
-// Start begins the periodic flush loop.
+// Every schedules a job to run at the specified interval.
+// The job function receives a context and returns an error on failure.
+func (s *scheduler) Every(name string, interval time.Duration, fn func(context.Context) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.jobs = append(s.jobs, job{name: name, interval: interval, fn: fn})
+}
+
+// Start runs all scheduled jobs concurrently.
+// It blocks until the context is cancelled.
 func (s *scheduler) Start(ctx context.Context) error {
-	ticker := time.NewTicker(s.batchPeriod)
-	defer ticker.Stop()
+	s.mu.Lock()
+	jobs := make([]job, len(s.jobs))
+	copy(jobs, s.jobs)
+	s.mu.Unlock()
 
-	for {
-		select {
-		case <-ticker.C:
-			s.flush(ctx)
-		case <-ctx.Done():
-			s.flush(ctx)
-			return ctx.Err()
-		}
+	ctx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+
+	for _, j := range jobs {
+		wg.Add(1)
+		go func(j job) {
+			defer wg.Done()
+			ticker := time.NewTicker(j.interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					if err := j.fn(ctx); err != nil {
+						fmt.Fprintf(os.Stderr, "scheduler job %q error: %v\n", j.name, err)
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}(j)
 	}
+
+	<-ctx.Done()
+	cancel()
+	wg.Wait()
+	return ctx.Err()
 }
 
-func (s *scheduler) flush(ctx context.Context) {
+// FlushNow triggers an immediate flush of all stats and sends a notification.
+// This is kept for backward compatibility.
+func (s *scheduler) FlushNow() {
+	ctx := context.Background()
 	warnings := s.warnings.Drain()
 
 	if err := s.collector.FlushHour(ctx); err != nil {
@@ -61,7 +96,7 @@ func (s *scheduler) flush(ctx context.Context) {
 	}
 	s.collector.Clear()
 
-	if err := s.collector.Prune(ctx, s.retentionDays); err != nil {
+	if err := s.collector.Prune(ctx, 7); err != nil {
 		fmt.Fprintf(os.Stderr, "prune error: %v\n", err)
 	}
 
@@ -76,9 +111,4 @@ func (s *scheduler) flush(ctx context.Context) {
 	if err := s.notifier.Notify(ctx, message); err != nil {
 		fmt.Fprintf(os.Stderr, "notify error: %v\n", err)
 	}
-}
-
-// FlushNow triggers an immediate flush.
-func (s *scheduler) FlushNow() {
-	s.flush(context.Background())
 }
