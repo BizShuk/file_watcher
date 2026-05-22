@@ -9,39 +9,30 @@ import (
 	"sync"
 
 	"github.com/charmbracelet/log"
-	"github.com/fsnotify/fsnotify"
 )
-
-// Handler is called for each file event.
-type Handler func(path string, op fsnotify.Op) error
 
 // Watcher defines the file-watcher operations.
 type Watcher interface {
 	Add(path string) error
-	Start(ctx context.Context, handler Handler) error
+	Scan(ctx context.Context) error
 	Close() error
 	GetWarnings() []string
 }
 
 // fsWatcher wraps fsnotify.Watcher and implements Watcher.
 type fsWatcher struct {
-	wrapped     *fsnotify.Watcher
 	done        chan struct{}
 	doneOnce    sync.Once
 	excludeList []string
 	warnings    []string
 	warnMu      sync.Mutex
 	wg          sync.WaitGroup
+	paths       []string
 }
 
 // New creates a new fsWatcher.
 func New(excludeList []string) (*fsWatcher, error) {
-	w, err := fsnotify.NewWatcher()
-	if err != nil {
-		return nil, fmt.Errorf("create fsnotify watcher: %w", err)
-	}
 	return &fsWatcher{
-		wrapped:     w,
 		done:        make(chan struct{}),
 		excludeList: excludeList,
 	}, nil
@@ -61,19 +52,22 @@ func (w *fsWatcher) Add(path string) error {
 	}
 
 	if info.Mode()&os.ModeSymlink != 0 {
-		return w.wrapped.Add(path)
+		w.paths = append(w.paths, path)
+		return nil
 	}
 
 	if info.IsDir() {
 		err := w.watchedWalk(path, func(p string) error {
-			return w.wrapped.Add(p)
+			w.paths = append(w.paths, p)
+			return nil
 		})
 		if err != nil {
 			return err
 		}
 		return nil
 	}
-	return w.wrapped.Add(path)
+	w.paths = append(w.paths, path)
+	return nil
 }
 
 func (w *fsWatcher) watchedWalk(root string, fn func(string) error) error {
@@ -122,7 +116,7 @@ func (w *fsWatcher) checkBrokenSymlink(path string) (bool, string) {
 		if !filepath.IsAbs(target) {
 			absTarget = filepath.Join(filepath.Dir(path), target)
 		}
-		_, err = os.Stat(absTarget)
+		_, err = os.Lstat(absTarget)
 		if err != nil && os.IsNotExist(err) {
 			return true, target
 		}
@@ -136,42 +130,35 @@ func (w *fsWatcher) addWarning(msg string) {
 	w.warnings = append(w.warnings, msg)
 }
 
-// Start begins watching and dispatches events to the handler.
-func (w *fsWatcher) Start(ctx context.Context, handler Handler) error {
-	ctx, cancel := context.WithCancel(ctx)
-	w.wg.Add(1)
-	go func() {
-		defer w.wg.Done()
-		for {
-			select {
-			case <-w.done:
-				cancel()
-				return
-			case <-ctx.Done():
-				return
-			case event := <-w.wrapped.Events:
-				skip := false
-				for _, ext := range w.excludeList {
-					if strings.HasSuffix(event.Name, ext) {
-						skip = true
-						break
-					}
-				}
-				if skip {
-					continue
-				}
-				log.Info("Event", "name", event.Name, "op", event.Op)
-
-				if err := handler(event.Name, event.Op); err != nil {
-					log.Warn("handler error", "path", event.Name, "err", err)
-				}
-			case err := <-w.wrapped.Errors:
-				log.Warn("watcher error", "err", err)
+// Scan walks all registered paths and logs file information.
+func (w *fsWatcher) Scan(ctx context.Context) error {
+	for _, root := range w.paths {
+		err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil
 			}
+
+			if info.Mode()&os.ModeSymlink != 0 {
+				return nil
+			}
+
+			for _, ext := range w.excludeList {
+				if strings.HasSuffix(p, ext) {
+					if info.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+			}
+
+			log.Info("scan file", "path", p, "size", info.Size())
+			return nil
+		})
+		if err != nil {
+			return err
 		}
-	}()
-	<-ctx.Done()
-	return ctx.Err()
+	}
+	return nil
 }
 
 // Close stops the watcher and releases resources.
@@ -180,7 +167,7 @@ func (w *fsWatcher) Close() error {
 		close(w.done)
 	})
 	w.wg.Wait()
-	return w.wrapped.Close()
+	return nil
 }
 
 // GetWarnings returns all collected warnings.

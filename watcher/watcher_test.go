@@ -5,9 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
-
-	"github.com/fsnotify/fsnotify"
 )
 
 func TestNewWatcher(t *testing.T) {
@@ -62,27 +59,32 @@ func TestWatcherAdd_nonexistent(t *testing.T) {
 	}
 }
 
-func TestWatcherStart_contextCancel(t *testing.T) {
+func TestWatcherScan(t *testing.T) {
 	w, err := New(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer w.Close()
 
-	tmp := filepath.Join(t.TempDir(), "testfile.txt")
-	os.WriteFile(tmp, []byte("hello"), 0644)
-	w.Add(tmp)
+	tempDir := t.TempDir()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		_ = w.Start(ctx, func(path string, op fsnotify.Op) error { return nil })
-		close(done)
-	}()
+	subdir := filepath.Join(tempDir, "subdir")
+	os.Mkdir(subdir, 0755)
 
-	time.Sleep(100 * time.Millisecond)
-	cancel()
-	<-done
-	w.Close()
+	file1 := filepath.Join(tempDir, "file1.txt")
+	os.WriteFile(file1, []byte("hello"), 0644)
+
+	file2 := filepath.Join(subdir, "file2.txt")
+	os.WriteFile(file2, []byte("world"), 0644)
+
+	if err := w.Add(tempDir); err != nil {
+		t.Fatalf("expected no error adding dir, got %v", err)
+	}
+
+	ctx := context.Background()
+	if err := w.Scan(ctx); err != nil {
+		t.Errorf("expected no error from scan, got %v", err)
+	}
 }
 
 func TestWatcherClose(t *testing.T) {
