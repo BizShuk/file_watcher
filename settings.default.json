@@ -11,5 +11,6 @@
     "webhook_url": ""
   },
   "batch_period": "1h",
+  "scan_interval": "30m",
   "stats_retention_days": 7
 }

@@ -23,6 +23,7 @@ type Settings struct {
 	ExcludeList        []string `json:"exclude_list"`
 	Admin              Admin    `json:"admin"`
 	BatchPeriod        string   `json:"batch_period"`
+	ScanInterval       string   `json:"scan_interval"`
 	StatsRetentionDays int      `json:"stats_retention_days"`
 }
 
@@ -94,6 +95,13 @@ func (l *Loader) parse(data []byte) (*Settings, error) {
 
 	cfg.ExpandPaths(l.homeDir)
 
+	if cfg.ScanInterval == "" {
+		cfg.ScanInterval = "30m"
+	}
+	if _, err := time.ParseDuration(cfg.ScanInterval); err != nil {
+		return nil, fmt.Errorf("scan_interval %q is not a valid duration: %w", cfg.ScanInterval, err)
+	}
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -142,4 +150,12 @@ func expandTilde(path string, homeDir string) string {
 		return filepath.Join(homeDir, path[2:])
 	}
 	return path
+}
+
+// ScanIntervalDuration returns the parsed scan interval as time.Duration.
+func (s *Settings) ScanIntervalDuration() (time.Duration, error) {
+	if s.ScanInterval == "" {
+		s.ScanInterval = "30m"
+	}
+	return time.ParseDuration(s.ScanInterval)
 }
