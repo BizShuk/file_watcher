@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -89,7 +90,10 @@ func (s *scheduler) Start(ctx context.Context) error {
 // This is kept for backward compatibility.
 func (s *scheduler) FlushNow() {
 	ctx := context.Background()
-	warnings := s.warnings.Drain()
+	var warnings []string
+	if s.warnings != nil {
+		warnings = s.warnings.Drain()
+	}
 
 	if err := s.collector.FlushHour(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "flush error: %v\n", err)
@@ -103,9 +107,12 @@ func (s *scheduler) FlushNow() {
 	message := fmt.Sprintf("[%s] Stats flushed and pruned", time.Now().Format(time.RFC3339))
 	if len(warnings) > 0 {
 		message += "\n\nWarnings during file monitoring:"
+		var b strings.Builder
 		for _, w := range warnings {
-			message += fmt.Sprintf("\n- %s", w)
+			b.WriteString("\n- ")
+			b.WriteString(w)
 		}
+		message += b.String()
 	}
 
 	if err := s.notifier.Notify(ctx, message); err != nil {
