@@ -26,7 +26,6 @@ type fsWatcher struct {
 	excludeList []string
 	warnings    []string
 	warnMu      sync.Mutex
-	wg          sync.WaitGroup
 	paths       []string
 }
 
@@ -134,11 +133,20 @@ func (w *fsWatcher) addWarning(msg string) {
 func (w *fsWatcher) Scan(ctx context.Context) error {
 	for _, root := range w.paths {
 		err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
 			if err != nil {
 				return nil
 			}
 
 			if info.Mode()&os.ModeSymlink != 0 {
+				isBroken, target := w.checkBrokenSymlink(p)
+				if isBroken {
+					w.addWarning(fmt.Sprintf("broken symlink detected: %s -> %s (target not found)", p, target))
+				}
 				return nil
 			}
 
@@ -166,7 +174,6 @@ func (w *fsWatcher) Close() error {
 	w.doneOnce.Do(func() {
 		close(w.done)
 	})
-	w.wg.Wait()
 	return nil
 }
 
