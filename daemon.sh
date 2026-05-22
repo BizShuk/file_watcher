@@ -23,6 +23,7 @@ mkdir -p "${CONFIG_DIR}"
 
 # 取得二進位檔路徑
 get_binary_path() {
+    local force_rebuild="$1"
     local bin_path
     # 嘗試從 go env 尋找 GOBIN 與 GOPATH
     local go_bin
@@ -41,9 +42,9 @@ get_binary_path() {
         bin_path="$HOME/go/bin/${BINARY_NAME}"
     fi
 
-    # 檢查二進位檔是否存在，若不存在則執行安裝
-    if [ ! -f "${bin_path}" ]; then
-        echo "未在 ${bin_path} 找到二進位檔，正在進行 go install..."
+    # 檢查二進位檔是否存在，或是強制重新編譯
+    if [ "${force_rebuild}" = "true" ] || [ ! -f "${bin_path}" ]; then
+        echo "正在編譯並安裝最新二進位檔 (go install .)..."
         go install .
     fi
 
@@ -59,7 +60,7 @@ get_binary_path() {
 # 安裝 macOS daemon (launchd)
 install_mac() {
     local bin_path
-    bin_path=$(get_binary_path)
+    bin_path=$(get_binary_path "true")
     echo "正在為 macOS 配置 launchd..."
 
     # 準備環境變數 plist 區段
@@ -100,7 +101,7 @@ EOF
 
     chmod 644 "${PLIST_PATH}"
     echo "已成功生成 LaunchAgent 設定檔: ${PLIST_PATH}"
-    echo "執行 './manage-daemon.sh start' 以啟動服務"
+    echo "執行 './daemon.sh start' 以啟動服務"
 }
 
 # 移除 macOS daemon
@@ -108,7 +109,7 @@ uninstall_mac() {
     echo "正在移除 macOS launchd 設定..."
     if launchctl list | grep -q "${PLIST_LABEL}"; then
         echo "正在停止服務..."
-        launchctl bootout gui/$(id -u) "${PLIST_PATH}" 2>/dev/null || launchctl unload "${PLIST_PATH}" 2>/dev/null || true
+        launchctl bootout gui/"$(id -u)" "${PLIST_PATH}" 2>/dev/null || launchctl unload "${PLIST_PATH}" 2>/dev/null || true
     fi
     if [ -f "${PLIST_PATH}" ]; then
         rm -f "${PLIST_PATH}"
@@ -120,11 +121,11 @@ uninstall_mac() {
 # 啟動 macOS daemon
 start_mac() {
     if [ ! -f "${PLIST_PATH}" ]; then
-        echo "錯誤: 尚未安裝服務，請先執行 './manage-daemon.sh install'" >&2
+        echo "錯誤: 尚未安裝服務，請先執行 './daemon.sh install'" >&2
         exit 1
     fi
     echo "正在載入並啟動服務..."
-    launchctl bootstrap gui/$(id -u) "${PLIST_PATH}" 2>/dev/null || launchctl load "${PLIST_PATH}"
+    launchctl bootstrap gui/"$(id -u)" "${PLIST_PATH}" 2>/dev/null || launchctl load "${PLIST_PATH}"
     echo "服務已啟動"
 }
 
@@ -135,7 +136,7 @@ stop_mac() {
         exit 1
     fi
     echo "正在停止並解除載入服務..."
-    launchctl bootout gui/$(id -u) "${PLIST_PATH}" 2>/dev/null || launchctl unload "${PLIST_PATH}"
+    launchctl bootout gui/"$(id -u)" "${PLIST_PATH}" 2>/dev/null || launchctl unload "${PLIST_PATH}"
     echo "服務已停止"
 }
 
@@ -162,7 +163,7 @@ status_mac() {
 # 安裝 Linux daemon (systemd)
 install_linux() {
     local bin_path
-    bin_path=$(get_binary_path)
+    bin_path=$(get_binary_path "true")
     echo "正在為 Linux 配置 systemd user service..."
 
     mkdir -p "${SYSTEMD_DIR}"
@@ -195,7 +196,7 @@ EOF
     chmod 644 "${SYSTEMD_PATH}"
     systemctl --user daemon-reload
     echo "已成功生成 systemd 設定檔: ${SYSTEMD_PATH}"
-    echo "執行 './manage-daemon.sh start' 以啟動服務"
+    echo "執行 './daemon.sh start' 以啟動服務"
 }
 
 # 移除 Linux daemon
@@ -219,7 +220,7 @@ uninstall_linux() {
 # 啟動 Linux daemon
 start_linux() {
     if [ ! -f "${SYSTEMD_PATH}" ]; then
-        echo "錯誤: 尚未安裝服務，請先執行 './manage-daemon.sh install'" >&2
+        echo "錯誤: 尚未安裝服務，請先執行 './daemon.sh install'" >&2
         exit 1
     fi
     echo "正在載入並啟用服務..."

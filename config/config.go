@@ -4,7 +4,6 @@
 package config
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,8 +13,22 @@ import (
 	"github.com/shuk/file_watcher/utils"
 )
 
-//go:embed settings.default.json
-var defaultConfigJSON string
+var defaultConfigJSON = `{
+  "watch_list": [
+    "~/projects"
+  ],
+  "exclude_list": [
+    ".git"
+  ],
+  "admin": {
+    "name": "admin",
+    "email": "admin@localhost",
+    "webhook_url": ""
+  },
+  "batch_period": "1h",
+  "scan_interval": "30m",
+  "stats_retention_days": 7
+}`
 
 // Settings holds the entire configuration.
 type Settings struct {

@@ -70,19 +70,19 @@ export SLACK_CHANNEL_ID="Cyourchannelid"
 
 ```bash
 # 1. 安裝服務 (會自動偵測 OS 並生成對應設定)
-./scripts/manage-daemon.sh install
+./daemon.sh install
 
 # 2. 啟動服務
-./scripts/manage-daemon.sh start
+./daemon.sh start
 
 # 3. 檢查狀態與最近日誌
-./scripts/manage-daemon.sh status
+./daemon.sh status
 
 # 4. 停止服務
-./scripts/manage-daemon.sh stop
+./daemon.sh stop
 
 # 5. 移除服務
-./scripts/manage-daemon.sh uninstall
+./daemon.sh uninstall
 ```
 
 更詳細的手動配置步驟（例如 `launchd` plist 設定與 Linux `systemd` user service）請參閱 [docs/daemon.md](file:///Users/shuk/projects/file_watcher/docs/daemon.md)。
