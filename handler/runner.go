@@ -1,4 +1,4 @@
-package runner
+package handler
 
 import (
 	"context"
@@ -12,24 +12,16 @@ import (
 	"github.com/bizshuk/gosdk/notify"
 	"github.com/bizshuk/gosdk/scheduler"
 	"github.com/shuk/file_watcher/config"
-	"github.com/shuk/file_watcher/stats"
-	"github.com/shuk/file_watcher/warning"
-	"github.com/shuk/file_watcher/watcher"
+	"github.com/shuk/file_watcher/svc"
 )
-
-// SchedulerOps is the consumer-defined interface (ISP): runtime only
-// needs Start, so that is all it depends on.
-type SchedulerOps interface {
-	Start(ctx context.Context) error
-}
 
 // runtime holds the application components started together.
 type runtime struct {
-	watcher       watcher.Watcher
-	collector     *stats.Collector
-	warnings      *warning.Sink
+	watcher       svc.Watcher
+	collector     *svc.Collector
+	warnings      *svc.Sink
 	notifier      notify.Notifier
-	sched         SchedulerOps
+	sched         *scheduler.Scheduler
 	retentionDays int
 }
 
@@ -37,7 +29,7 @@ type runtime struct {
 func Wire(homeDir string, cfg *config.Settings) (*runtime, error) {
 	statsDir := filepath.Join(homeDir, ".config", "file_watcher", "stats")
 
-	w, err := watcher.New(cfg.ExcludeList)
+	w, err := svc.New(cfg.ExcludeList)
 	if err != nil {
 		return nil, fmt.Errorf("create watcher: %w", err)
 	}
@@ -47,8 +39,8 @@ func Wire(homeDir string, cfg *config.Settings) (*runtime, error) {
 		}
 	}
 
-	collector := stats.NewCollector(statsDir)
-	warnings := warning.NewSink()
+	collector := svc.NewCollector(statsDir)
+	warnings := svc.NewSink()
 	notif := buildNotifier()
 
 	scanInterval, err := cfg.ScanIntervalDuration()

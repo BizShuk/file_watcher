@@ -1,10 +1,8 @@
-package show
+package svc
 
 import (
 	"testing"
 	"time"
-
-	"github.com/shuk/file_watcher/stats"
 )
 
 func TestFormatBytes(t *testing.T) {
@@ -33,7 +31,7 @@ func TestFormatBytes(t *testing.T) {
 }
 
 func TestComputeGrowth(t *testing.T) {
-	entries := map[string][]stats.Entry{
+	entries := map[string][]Entry{
 		"/tmp/test1.txt": {
 			{Path: "/tmp/test1.txt", Size: 1000, LastModified: parseTime("2026-05-18T10:00:00Z")},
 			{Path: "/tmp/test1.txt", Size: 2000, LastModified: parseTime("2026-05-18T11:00:00Z")},
@@ -69,7 +67,7 @@ func TestComputeGrowth(t *testing.T) {
 }
 
 func TestComputeGrowthNewFile(t *testing.T) {
-	entries := map[string][]stats.Entry{
+	entries := map[string][]Entry{
 		"/tmp/new.txt": {
 			{Path: "/tmp/new.txt", Size: 5000, LastModified: parseTime("2026-05-18T11:00:00Z")},
 		},

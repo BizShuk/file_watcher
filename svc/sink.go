@@ -1,4 +1,4 @@
-package warning
+package svc
 
 import "sync"
 

@@ -1,21 +1,20 @@
 # 📁 File Watcher — Project Summary
 
-**Date:** 2026-05-17
-**Repo:** `~/projects/file_watcher`
+`Date:` 2026-05-23
+`Repo:` `~/projects/file_watcher`
 
 ---
 
 ## 🔧 Architecture (SOLID)
 
-| File | Responsibility |
-|------|---------------|
-| `main.go` | Entry point, wires DI, graceful shutdown |
-| `config.go` | Loads config via `sdkutils.CreateIfNotExist`, validation |
+| File / Package | Responsibility |
+|----------------|----------------|
+| `main.go` | Entry point, CLI command invocation |
+| `cmd/` | Cobra subcommands (`RootCmd`, `StartCmd`, `ExportCmd`, `ShowCmd`) |
+| `config/config.go` | Loads config via `sdkutils.CreateIfNotExist`, validation |
 | `settings.default.json` | Embedded default (`//go:embed`) |
-| `stats.go` | In-memory map + RWMutex, hourly flush to JSON |
-| `watcher.go` | fsnotify wrapper, recursive watch |
-| `scheduler.go` | time.Ticker batch scheduler |
-| `notifier.go` | Notifier interface + `StdoutNotifier` |
+| `svc/` | Integrated services: watcher, collector (stats), sink (warning), show (growth chart) |
+| `handler/` | Application runner and scheduler orchestration (life-cycle driver) |
 
 ---
 
@@ -30,7 +29,7 @@
 }
 ```
 
-**Config path:** `~/.config/file_watcher/settings.json`
+`Config path:` `~/.config/file_watcher/settings.json`
 
 ---
 
@@ -50,6 +49,11 @@
 - [x] Module: `github.com/shuk/file_watcher`
 - [x] SOLID design, 10 unit tests passing
 
+### 2026-05-23 — Package Refactoring
+
+- [x] Merged `show`, `stats`, `warning`, `watcher` packages into a single `svc` package to eliminate circular import risks and consolidate services
+- [x] Moved `runner` package into `handler` package to clarify life-cycle routing
+
 ---
 
 ## 📌 TODO
@@ -59,7 +63,7 @@
 - `grafana/dashboard.json`
 
 ### 2. LLM Integration
-- Replace `StdoutNotifier` with message channel → LLM analysis
+- Replace `StdoutNotifier` with message channel -> LLM analysis
 - Detect anomalies, structured insights
 
 ---
@@ -68,7 +72,7 @@
 
 ```
 go build -buildvcs=false .   ✅ BUILD OK
-go test ./...                ok   github.com/shuk/file_watcher   0.570s
+go test ./...                ok   github.com/shuk/file_watcher   0.523s
 ```
 
 ---

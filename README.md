@@ -4,12 +4,12 @@
 
 ## 功能
 
-- **即時監控**：使用 `fsnotify` 監控指定目錄的檔案變更（建立、修改、刪除）
-- **統計收集**：收集每個檔案的大小與最後修改時間
-- **定期寫出**：每個 `batchPeriod`（預設 1 小時）將統計資料寫入 `~/.config/file_watcher/stats/YYYY-MM-DDTHH.json`
-- **保留管理**：自動刪除超過 `stats_retention_days`（預設 7 天）的舊統計檔案
-- **增長報告**：透過 `show` 子命令以橫條圖顯示檔案大小變化
-- **Slack 通知**：當設定了環境變數時，自動將統計摘要同步發送至 Slack 頻道（多重通知器架構）
+- `即時監控`：使用 `fsnotify` 監控指定目錄的檔案變更（建立、修改、刪除）
+- `統計收集`：收集每個檔案的大小與最後修改時間
+- `定期寫出`：每個 `batchPeriod`（預設 1 小時）將統計資料寫入 `~/.config/file_watcher/stats/YYYY-MM-DDTHH.json`
+- `保留管理`：自動刪除超過 `stats_retention_days`（預設 7 天）的舊統計檔案
+- `增長報告`：透過 `show` 子命令以橫條圖顯示檔案大小變化，直接執行 `./file_watcher` 亦會預設輸出報告
+- `Slack 通知`：當設定了環境變數時，自動將統計摘要同步發送至 Slack 頻道（多重通知器架構）
 
 ## 安裝
 
@@ -37,7 +37,7 @@ go run main.go start
 
 ### 查看磁碟使用量增長
 
-執行 `show` 子命令來查看磁碟使用量增長情況：
+執行 `show` 子命令來查看磁碟使用量增長情況（或直接執行 `./file_watcher`）：
 
 ```bash
 # 使用 go run 執行
@@ -128,38 +128,34 @@ export SLACK_CHANNEL_ID="Cyourchannelid"
 
 ### 設定欄位說明
 
-| 欄位                   | 類型       | 說明                                              |
-| ---------------------- | ---------- | ------------------------------------------------- |
-| `watch_list`           | `[]string` | 要監控的目錄或檔案路徑（支援使用 `~` 代表家目錄） |
-| `exclude_list`         | `[]string` | 要排除的副檔名（例如 `.git`）                     |
-| `batch_period`         | `string`   | 統計寫出的間隔時間（例如 `1h`、`30m`）            |
-| `stats_retention_days` | `int`      | 統計檔案的保留天數                                |
+| 欄位 | 類型 | 說明 |
+| --- | --- | --- |
+| `watch_list` | `[]string` | 要監控的目錄或檔案路徑（支援使用 `~` 代表家目錄） |
+| `exclude_list` | `[]string` | 要排除的副檔名或目錄名 |
+| `batch_period` | `string` | 統計寫出的間隔時間（例如 `1h`、`30m`） |
+| `stats_retention_days` | `int` | 統計檔案的保留天數 |
 
 ## 架構
 
 ```tree
-main.go          # 進入點，初始化所有元件並處理子命令
-  ├── config.go       # 讀取並驗證設定檔
-  ├── export.go       # 匯出設定檔為格式化的 JSON 輸出
-  ├── watcher.go      # fsnotify 包裝器，處理檔案事件
-  ├── stats.go        # StatsCollector 介面與實作
-  ├── scheduler.go    # 定期執行 flush 與 prune
-  └── notifier.go     # 通知介面與其實作（包含 stdout 與 Slack）
+main.go          # 進入點，調用 cmd.Execute()
+  ├── cmd/            # 命令列子命令 (RootCmd, StartCmd, ExportCmd, ShowCmd)
+  ├── config/         # 讀取並驗證設定檔 (config.go)
+  ├── handler/        # 生命週期管理器 (Wire, Run) 驅動排程與事件 (runner.go)
+  └── svc/            # 整合服務層，包含 watcher, collector, sink, show 邏輯
 ```
 
-### 核心介面（ISP + DIP）
+### 核心介面與定義（ISP + DIP）
 
-- **StatsCollector**：`AddOrUpdate`、`Remove`、`FlushHour`、`Prune`、`Clear`
-- **Notifier**：`Notify(summary string) error`（實作包含 `StdoutNotifier`、`SlackNotifier`、`MultiNotifier`）
-- **WatcherOps**：`Add`、`Start`、`Close`
+- `svc.Collector`：實現 `Recorder` 與 `Flusher` 介面（管理 `Entry` 寫入與歷史統計修剪）
+- `notify.Notifier`：通知介面（實作包含 `StdoutNotifier`、`SlackNotifier`、`Multi`）
+- `svc.Watcher`：監控檔案目錄介面與 `fsWatcher` 實作
 
 ### 資料流向
 
-1. `fsWatcher.Start()` 監聽 fsnotify 事件並呼叫 handler
-2. Handler 呼叫 `collector.AddOrUpdate(path, size, modTime)` 記錄檔案變更
-3. `Scheduler.run()` 每隔 `batchPeriod` 呼叫 `flush()`
-4. `flush()` 將統計寫入 `~/.config/file_watcher/stats/YYYY-MM-DDTHH.json`
-5. `Notifier.Notify()` 將統計摘要同步輸出至主控台與 `Slack`（若有配置環境變數）
+1. `svc.Watcher.Scan()` 掃描註冊路徑下的檔案狀態
+2. 排程器 (Scheduler) 定期觸發 `collector.FlushHour(ctx)` 寫入統計資料至 `~/.config/file_watcher/stats/YYYY-MM-DDTHH.json`
+3. 程式關閉時，`handler.finalFlush()` 排空警告、寫入最後統計並透過 `Notifier.Notify()` 發送最後報告
 
 ### 統計資料格式
 
@@ -180,7 +176,7 @@ main.go          # 進入點，初始化所有元件並處理子命令
 
 ## 執行緒安全
 
-`fsStatsCollector` 使用 `sync.RWMutex` 保護其內部 map，確保並發安全。
+`svc.Collector` 使用 `sync.RWMutex` 保護其內部 map，確保併發安全。
 
 ## 開發
 
@@ -200,25 +196,5 @@ go test -race ./...         # 使用 race 檢測器執行測試
 
 ### 測試覆蓋的模組
 
-- `config_test.go` — 設定檔案載入與驗證
-- `stats_test.go` — 統計收集器的單元測試
-- `watcher_test.go` — 檔案監控邏輯測試
-- `show_test.go` — show 子命令的單元測試（formatBytes、computeGrowth）
-- `notifier_test.go` — 通知器與 Mock Slack API 伺服器測試
-
-## 預設設定
-
-`settings.default.json` 嵌入式資源提供預設值：
-
-```json
-{
-    "watch_list": ["/tmp"],
-    "exclude_list": [".git"],
-    "batch_period": "1h",
-    "stats_retention_days": 7
-}
-```
-
-## 相關檔案
-
-- `show.go` — `ShowCmd`、`readAllStats`、`computeGrowth`、`formatBytes`、`printBarChart`
+- `config/` — 設定檔案載入與驗證
+- `svc/` — 包含 watcher、collector、show (formatBytes, computeGrowth) 等服務單元測試

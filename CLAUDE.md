@@ -34,27 +34,25 @@ The project is a file watcher that monitors directories for changes and periodic
 
 ```
 main.go              # Entry point, CLI commands setup
-runner/runner.go     # Wires components (DI entry point) and drives execution loop
+cmd/                 # CLI commands (RootCmd, StartCmd, ExportCmd, ShowCmd)
+handler/runner.go    # Wires components (DI entry point) and drives execution loop
 config/config.go     # Settings schema and validation
-watcher/watcher.go   # Scans/watches directories
-stats/collector.go   # Thread-safe stats collection and serialization
-warning/sink.go      # Thread-safe warning collection
-show/                # Disk usage growth computation and rendering
+svc/                 # Integrated services (watcher, collector, sink, show)
 gosdk/notify         # External dependency for notification interface and notifiers
 ```
 
 ### Key Interfaces (DIP via ISP)
 
-- `stats.Recorder` and `stats.Flusher` (implemented by `stats.Collector`)
+- `svc.Recorder` and `svc.Flusher` (implemented by `svc.Collector`)
 - `notify.Notifier` (imported from `gosdk/notify`, implemented by `StdoutNotifier`, `SlackNotifier`, `Multi`)
-- `watcher.Watcher`
+- `svc.Watcher`
 
 ### Data Flow
 
-1. `runner.Run()` starts the scheduler.
+1. `handler.Run()` starts the scheduler.
 2. Scheduler runs jobs:
-   - `scan` job calls `watcher.Scan()` to check files.
-   - `flush` job writes stats using `stats.Flusher.FlushHour()` and prunes old files.
+   - `scan` job calls `svc.Watcher.Scan()` to check files.
+   - `flush` job writes stats using `svc.Flusher.FlushHour()` and prunes old files.
 3. Upon shutdown, a final flush drains warnings and flushes stats.
 4. `notify.Notifier.Notify()` delivers the final report.
 

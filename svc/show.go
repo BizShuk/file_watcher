@@ -1,4 +1,4 @@
-package show
+package svc
 
 import (
 	"encoding/json"
@@ -6,15 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-
-	"github.com/shuk/file_watcher/stats"
 )
-
-// StatFile is the JSON structure written to disk each hour.
-type StatFile struct {
-	Date    string        `json:"date"`
-	Entries []stats.Entry `json:"entries"`
-}
 
 // GrowthEntry holds the computed growth for a file path.
 type GrowthEntry struct {
@@ -49,8 +41,8 @@ func ShowCmd(statsDir string) error {
 }
 
 // readAllStats reads all stat files and returns a map of path -> sorted entries by time.
-func readAllStats(statsDir string) (map[string][]stats.Entry, error) {
-	result := make(map[string][]stats.Entry)
+func readAllStats(statsDir string) (map[string][]Entry, error) {
+	result := make(map[string][]Entry)
 
 	patterns := []string{statsDir + "/*.json"}
 	var files []string
@@ -90,7 +82,7 @@ func readAllStats(statsDir string) (map[string][]stats.Entry, error) {
 }
 
 // computeGrowth calculates size change from initial to latest for each path.
-func computeGrowth(entries map[string][]stats.Entry) []GrowthEntry {
+func computeGrowth(entries map[string][]Entry) []GrowthEntry {
 	var growth []GrowthEntry
 
 	for path, pathEntries := range entries {

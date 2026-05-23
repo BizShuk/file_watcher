@@ -8,7 +8,7 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/shuk/file_watcher/config"
-	"github.com/shuk/file_watcher/runner"
+	"github.com/shuk/file_watcher/handler"
 	"github.com/spf13/cobra"
 )
 
@@ -31,13 +31,13 @@ var StartCmd = &cobra.Command{
 			cancel()
 		}()
 
-		r, err := runner.Wire(homeDir, cfg)
+		r, err := handler.Wire(homeDir, cfg)
 		if err != nil {
 			log.Fatal("wire", "err", err)
 			return err
 		}
 
-		return runner.Run(ctx, r)
+		return handler.Run(ctx, r)
 	},
 }
 

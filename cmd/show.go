@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/shuk/file_watcher/show"
+	"github.com/shuk/file_watcher/svc"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +17,7 @@ var ShowCmd = &cobra.Command{
 			return err
 		}
 		statsDir := filepath.Join(homeDir, ".config", "file_watcher", "stats")
-		return show.ShowCmd(statsDir)
+		return svc.ShowCmd(statsDir)
 	},
 }
 
