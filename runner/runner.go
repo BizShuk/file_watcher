@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/bizshuk/gosdk/scheduler"
+	"github.com/bizshuk/gosdk/notify"
 	"github.com/shuk/file_watcher/config"
-	"github.com/shuk/file_watcher/notify"
 	"github.com/shuk/file_watcher/stats"
 	"github.com/shuk/file_watcher/watcher"
 	"github.com/shuk/file_watcher/warning"

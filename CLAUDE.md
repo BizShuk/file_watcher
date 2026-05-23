@@ -33,28 +33,31 @@ The project is a file watcher that monitors directories for changes and periodic
 ### Core Components
 
 ```
-main.go          # Entry point, wires together Watcher → StatsCollector → Scheduler → Notifier
-watcher.go       # Wraps fsnotify.Watcher, recursively watches directories, filters exclude list
-stats.go         # StatsCollector interface + fsStatsCollector implementation (thread-safe)
-scheduler.go     # Periodically flushes stats (via FlushHour) and prunes old files
-notifier.go      # Notifier interface with StdoutNotifier implementation
-config.go        # Settings struct + Load() from ~/.config/file_watcher/settings.json
-utils/config.go  # LoadOrCreate() helper for JSON config files
+main.go              # Entry point, CLI commands setup
+runner/runner.go     # Wires components (DI entry point) and drives execution loop
+config/config.go     # Settings schema and validation
+watcher/watcher.go   # Scans/watches directories
+stats/collector.go   # Thread-safe stats collection and serialization
+warning/sink.go      # Thread-safe warning collection
+show/                # Disk usage growth computation and rendering
+utils/config.go      # JSON config file LoadOrCreate helper
+gosdk/notify         # External dependency for notification interface and notifiers
 ```
 
 ### Key Interfaces (DIP via ISP)
 
-- `StatsCollector`: `AddOrUpdate`, `Remove`, `FlushHour`, `Prune`, `Clear`
-- `Notifier`: `Notify(summary string) error`
-- `WatcherOps`: `Add`, `Start`, `Close`
+- `stats.Recorder` and `stats.Flusher` (implemented by `stats.Collector`)
+- `notify.Notifier` (imported from `gosdk/notify`, implemented by `StdoutNotifier`, `SlackNotifier`, `Multi`)
+- `watcher.Watcher`
 
 ### Data Flow
 
-1. `fsWatcher.Start()` listens to fsnotify events and calls the handler
-2. Handler calls `collector.AddOrUpdate(path, size, modTime)` for each file event
-3. `Scheduler.run()` ticks every `batchPeriod` and calls `flush()`
-4. `flush()` writes stats to `~/.config/file_watcher/stats/YYYY-MM-DDTHH.json` then prunes old files
-5. `Notifier.Notify()` delivers a summary (stdout for now)
+1. `runner.Run()` starts the scheduler.
+2. Scheduler runs jobs:
+   - `scan` job calls `watcher.Scan()` to check files.
+   - `flush` job writes stats using `stats.Flusher.FlushHour()` and prunes old files.
+3. Upon shutdown, a final flush drains warnings and flushes stats.
+4. `notify.Notifier.Notify()` delivers the final report.
 
 ### Configuration
 
