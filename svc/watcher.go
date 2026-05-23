@@ -14,7 +14,7 @@ import (
 // Watcher defines the file-watcher operations.
 type Watcher interface {
 	Add(path string) error
-	Scan(ctx context.Context) error
+	Scan(ctx context.Context) ([]Entry, error)
 	Close() error
 	GetWarnings() []string
 }
@@ -129,8 +129,9 @@ func (w *fsWatcher) addWarning(msg string) {
 	w.warnings = append(w.warnings, msg)
 }
 
-// Scan walks all registered paths and logs file information.
-func (w *fsWatcher) Scan(ctx context.Context) error {
+// Scan walks all registered paths and returns file stats.
+func (w *fsWatcher) Scan(ctx context.Context) ([]Entry, error) {
+	var entries []Entry
 	for _, root := range w.paths {
 		err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
 			select {
@@ -159,14 +160,19 @@ func (w *fsWatcher) Scan(ctx context.Context) error {
 				}
 			}
 
+			entries = append(entries, Entry{
+				Path:         p,
+				Size:         info.Size(),
+				LastModified: info.ModTime(),
+			})
 			log.Info("scan file", "path", p, "size", info.Size())
 			return nil
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return entries, nil
 }
 
 // Close stops the watcher and releases resources.

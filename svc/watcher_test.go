@@ -82,7 +82,7 @@ func TestWatcherScan(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := w.Scan(ctx); err != nil {
+	if _, err := w.Scan(ctx); err != nil {
 		t.Errorf("expected no error from scan, got %v", err)
 	}
 }

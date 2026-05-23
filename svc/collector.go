@@ -84,6 +84,13 @@ func (c *Collector) Clear() {
 	c.mu.Unlock()
 }
 
+// AddEntry records a file entry into the collector.
+func (c *Collector) AddEntry(path string, size int64, modTime time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data[path] = Entry{Path: path, Size: size, LastModified: modTime}
+}
+
 // Prune deletes stat files older than retentionDays in statsDir.
 func (c *Collector) Prune(ctx context.Context, retentionDays int) error {
 	dir := c.statsDir

@@ -60,7 +60,16 @@ func Wire(homeDir string, cfg *config.Settings) (*runtime, error) {
 	sched.Add(scheduler.Job{
 		Name:     "scan",
 		Interval: scanInterval,
-		Fn:       func(ctx context.Context) error { return w.Scan(ctx) },
+		Fn: func(ctx context.Context) error {
+			entries, err := w.Scan(ctx)
+			if err != nil {
+				return err
+			}
+			for _, e := range entries {
+				collector.AddEntry(e.Path, e.Size, e.LastModified)
+			}
+			return nil
+		},
 		OnError:  onJobErr,
 	})
 	sched.Add(scheduler.Job{

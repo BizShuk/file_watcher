@@ -21,7 +21,7 @@ func TestCollector_NewCollector(t *testing.T) {
 
 func TestCollector_Clear(t *testing.T) {
 	c := NewCollector(t.TempDir())
-	c.data["/tmp/test.log"] = Entry{Path: "/tmp/test.log", Size: 1024, LastModified: time.Now()}
+	c.AddEntry("/tmp/test.log", 1024, time.Now())
 	c.Clear()
 
 	c.mu.RLock()
@@ -43,8 +43,8 @@ func TestCollector_FlushHour(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := NewCollector(tmpDir)
 
-	c.data["/tmp/a.log"] = Entry{Path: "/tmp/a.log", Size: 1024, LastModified: time.Now()}
-	c.data["/tmp/b.log"] = Entry{Path: "/tmp/b.log", Size: 2048, LastModified: time.Now()}
+	c.AddEntry("/tmp/a.log", 1024, time.Now())
+	c.AddEntry("/tmp/b.log", 2048, time.Now())
 
 	err := c.FlushHour(context.Background())
 	if err != nil {
@@ -74,7 +74,7 @@ func TestCollector_FlushHour(t *testing.T) {
 
 func TestCollector_FlushHour_clearsData(t *testing.T) {
 	c := NewCollector(t.TempDir())
-	c.data["/tmp/test.log"] = Entry{Path: "/tmp/test.log", Size: 1024, LastModified: time.Now()}
+	c.AddEntry("/tmp/test.log", 1024, time.Now())
 	c.FlushHour(context.Background())
 	c.Clear()
 
