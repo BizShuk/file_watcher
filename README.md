@@ -19,17 +19,31 @@ go build -o file_watcher .
 
 ## 使用方式
 
+您可以直接使用 `go run` 指令執行，或是先將其建置為二進位檔 (binary) 後執行。
+
 ### 啟動監控服務
 
+執行 `start` 子命令來啟動監控服務：
+
 ```bash
-./file_watcher
+# 使用 go run 執行
+go run main.go start
+
+# 或是執行建置後的二進位檔
+./file_watcher start
 ```
 
 服務會讀取 `~/.config/file_watcher/settings.json` 的設定並開始監控。
 
 ### 查看磁碟使用量增長
 
+執行 `show` 子命令來查看磁碟使用量增長情況：
+
 ```bash
+# 使用 go run 執行
+go run main.go show
+
+# 或是執行建置後的二進位檔
 ./file_watcher show
 ```
 
@@ -46,7 +60,13 @@ go build -o file_watcher .
 
 ### 匯出目前設定檔內容
 
+執行 `export` 子命令來匯出目前的設定檔內容：
+
 ```bash
+# 使用 go run 執行
+go run main.go export
+
+# 或是執行建置後的二進位檔
 ./file_watcher export
 ```
 
@@ -57,7 +77,8 @@ go build -o file_watcher .
 ```bash
 export SLACK_BOT_TOKEN="xoxb-your-bot-token"
 export SLACK_CHANNEL_ID="Cyourchannelid"
-./file_watcher
+# 啟動服務
+./file_watcher start
 ```
 
 程式啟動時若偵測到這些環境變數，會自動加載 `SlackNotifier` 並與 `StdoutNotifier` 併用，在發送本機日誌的同時，將統計摘要同步發送至 `Slack`。

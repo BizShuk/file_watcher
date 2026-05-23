@@ -1,5 +1,6 @@
 // Package config provides configuration loading for file_watcher.
-// Settings are loaded from the specified config directory via gosdk config + viper.
+// Settings are loaded from the specified config directory
+// via gosdk config + viper.
 package config
 
 import (
@@ -9,6 +10,8 @@ import (
 
 	"github.com/bizshuk/gosdk/config"
 	"github.com/charmbracelet/log"
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/shuk/file_watcher/utils"
 	"github.com/spf13/viper"
 )
 
@@ -33,19 +36,20 @@ var defaultConfigJSON = `{
 
 // Settings holds the entire configuration.
 type Settings struct {
-	WatchList          []string `json:"watch_list" mapstructure:"watch_list"`
-	ExcludeList        []string `json:"exclude_list" mapstructure:"exclude_list"`
-	Admin              Admin    `json:"admin" mapstructure:"admin"`
-	BatchPeriod        string   `json:"batch_period" mapstructure:"batch_period"`
-	ScanInterval       string   `json:"scan_interval" mapstructure:"scan_interval"`
-	StatsRetentionDays int      `json:"stats_retention_days" mapstructure:"stats_retention_days"`
+	WatchList          []string `json:"watch_list"`
+	ExcludeList        []string `json:"exclude_list"`
+	Admin              Admin    `json:"admin"`
+	BatchPeriod        string   `json:"batch_period"`
+	ScanInterval       string   `json:"scan_interval"`
+	StatsRetentionDays int      `json:"stats_retention_days"`
 }
 
-// Admin is reserved for future admin-notification integration; currently unread.
+// Admin is reserved for future admin-notification integration;
+// currently unread.
 type Admin struct {
-	Name       string `json:"name" mapstructure:"name"`
-	Email      string `json:"email" mapstructure:"email"`
-	WebhookURL string `json:"webhook_url" mapstructure:"webhook_url"`
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	WebhookURL string `json:"webhook_url"`
 }
 
 // Default reads configuration from ~/.config/file_watcher/settings.json
@@ -54,11 +58,26 @@ func Default() (*Settings, error) {
 	homeDir, _ := os.UserHomeDir()
 	configDir := expandTilde("~/.config/file_watcher", homeDir)
 
+	// Ensure config file exists, auto-create it with defaults if not present.
+	var initialSettings Settings
+	configFilePath := filepath.Join(configDir, defaultConfigFile)
+	err := utils.LoadOrCreate(
+		configFilePath,
+		defaultConfigJSON,
+		&initialSettings,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Use gosdk config.DefaultWithDir to set CONFIG_DIR
 	config.DefaultWithDir(configDir)
 
 	var settings Settings
-	if err := viper.Unmarshal(&settings); err != nil {
+	err = viper.Unmarshal(&settings, func(c *mapstructure.DecoderConfig) {
+		c.TagName = "json"
+	})
+	if err != nil {
 		return nil, err
 	}
 

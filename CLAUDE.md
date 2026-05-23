@@ -2,15 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build and Test Commands
+## Build, Run and Test Commands
 
 ```bash
-go build -o file_watcher .        # Build the binary
-go test ./...                       # Run all tests
-go test -v ./...                    # Run all tests with verbose output
-go test -run TestWatcherAdd_file   # Run a single test
-go test -race ./...                 # Run tests with race detector
+# Build the binary
+go build -o file_watcher .
+
+# Run directly
+go run main.go start               # Start the watcher
+go run main.go show                # Show disk usage growth
+go run main.go export              # Export configuration
+
+# Run the binary
+./file_watcher start               # Start the watcher
+./file_watcher show                # Show disk usage growth
+./file_watcher export              # Export configuration
+
+# Run tests
+go test ./...                      # Run all tests
+go test -v ./...                   # Run all tests with verbose output
+go test -run TestWatcherAdd_file  # Run a single test
+go test -race ./...                # Run tests with race detector
 ```
+
 
 ## Architecture
 
