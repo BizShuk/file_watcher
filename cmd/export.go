@@ -9,22 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exportCmd = &cobra.Command{
+var ExportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Export configuration as JSON",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.Default()
-		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
-		}
-
-		data, err := json.MarshalIndent(cfg, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to format JSON: %w", err)
-		}
-
-		fmt.Println(string(data))
-		return nil
+		return RunExport(cmd.OutOrStdout())
 	},
 }
 
@@ -49,5 +38,5 @@ func RunExport(w io.Writer) error {
 }
 
 func init() {
-	rootCmd.AddCommand(exportCmd)
+	RootCmd.AddCommand(ExportCmd)
 }

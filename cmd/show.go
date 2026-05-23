@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var showCmd = &cobra.Command{
+var ShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show disk usage growth chart",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -22,5 +22,5 @@ var showCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(showCmd)
+	RootCmd.AddCommand(ShowCmd)
 }

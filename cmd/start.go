@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var startCmd = &cobra.Command{
+var StartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the file watcher",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -42,5 +42,5 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(startCmd)
+	RootCmd.AddCommand(StartCmd)
 }
