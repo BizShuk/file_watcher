@@ -12,6 +12,6 @@ type Entry struct {
 
 // StatFile is the JSON structure written to disk each hour.
 type StatFile struct {
-	Date    string   `json:"date"`
-	Entries []Entry  `json:"entries"`
+	Date    string  `json:"date"`
+	Entries []Entry `json:"entries"`
 }

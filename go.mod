@@ -3,7 +3,7 @@ module github.com/shuk/file_watcher
 go 1.25.0
 
 require (
-	github.com/bizshuk/gosdk v1.0.1-0.20260523052211-891f7306cde9
+	github.com/bizshuk/gosdk v1.0.1-0.20260523114224-c9b06b1ce845
 	github.com/charmbracelet/log v1.0.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/spf13/cobra v1.10.2

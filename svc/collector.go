@@ -10,12 +10,6 @@ import (
 	"time"
 )
 
-// Recorder captures file change events from the watcher.
-type Recorder interface {
-	AddOrUpdate(path string, size int64, modTime time.Time)
-	Remove(path string)
-}
-
 // Flusher persists collected stats and manages retention.
 type Flusher interface {
 	FlushHour(ctx context.Context) error
@@ -23,7 +17,7 @@ type Flusher interface {
 	Prune(ctx context.Context, retentionDays int) error
 }
 
-// Collector implements both Recorder and Flusher.
+// Collector implements Flusher.
 type Collector struct {
 	mu       sync.RWMutex
 	data     map[string]Entry
@@ -43,22 +37,6 @@ func NewCollector(statsDir string) *Collector {
 // roundHour returns t rounded down to the start of its hour.
 func roundHour(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
-}
-
-// AddOrUpdate records or updates the stat for a file path.
-// Safe for concurrent use.
-func (c *Collector) AddOrUpdate(path string, size int64, modTime time.Time) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.data[path] = Entry{Path: path, Size: size, LastModified: modTime}
-}
-
-// Remove deletes the stat for a file path.
-// Safe for concurrent use.
-func (c *Collector) Remove(path string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.data, path)
 }
 
 // FlushHour writes the current hour's data to disk and clears the map.

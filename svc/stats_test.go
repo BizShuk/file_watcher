@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 )
@@ -20,59 +19,9 @@ func TestCollector_NewCollector(t *testing.T) {
 	}
 }
 
-func TestCollector_AddOrUpdate(t *testing.T) {
-	c := NewCollector(t.TempDir())
-	now := time.Now()
-
-	c.AddOrUpdate("/tmp/test.log", 1024, now)
-
-	c.mu.RLock()
-	entry, ok := c.data["/tmp/test.log"]
-	c.mu.RUnlock()
-
-	if !ok {
-		t.Fatal("expected entry for /tmp/test.log")
-	}
-	if entry.Size != 1024 {
-		t.Errorf("expected size=1024, got %d", entry.Size)
-	}
-	if !entry.LastModified.Equal(now) {
-		t.Errorf("expected modTime=%v, got %v", now, entry.LastModified)
-	}
-}
-
-func TestCollector_AddOrUpdate_overwrites(t *testing.T) {
-	c := NewCollector(t.TempDir())
-	now := time.Now()
-
-	c.AddOrUpdate("/tmp/test.log", 1024, now)
-	c.AddOrUpdate("/tmp/test.log", 2048, now.Add(time.Hour))
-
-	c.mu.RLock()
-	entry := c.data["/tmp/test.log"]
-	c.mu.RUnlock()
-
-	if entry.Size != 2048 {
-		t.Errorf("expected size=2048, got %d", entry.Size)
-	}
-}
-
-func TestCollector_Remove(t *testing.T) {
-	c := NewCollector(t.TempDir())
-	c.AddOrUpdate("/tmp/test.log", 1024, time.Now())
-	c.Remove("/tmp/test.log")
-
-	c.mu.RLock()
-	_, ok := c.data["/tmp/test.log"]
-	c.mu.RUnlock()
-	if ok {
-		t.Error("expected entry to be removed")
-	}
-}
-
 func TestCollector_Clear(t *testing.T) {
 	c := NewCollector(t.TempDir())
-	c.AddOrUpdate("/tmp/test.log", 1024, time.Now())
+	c.data["/tmp/test.log"] = Entry{Path: "/tmp/test.log", Size: 1024, LastModified: time.Now()}
 	c.Clear()
 
 	c.mu.RLock()
@@ -94,8 +43,8 @@ func TestCollector_FlushHour(t *testing.T) {
 	tmpDir := t.TempDir()
 	c := NewCollector(tmpDir)
 
-	c.AddOrUpdate("/tmp/a.log", 1024, time.Now())
-	c.AddOrUpdate("/tmp/b.log", 2048, time.Now())
+	c.data["/tmp/a.log"] = Entry{Path: "/tmp/a.log", Size: 1024, LastModified: time.Now()}
+	c.data["/tmp/b.log"] = Entry{Path: "/tmp/b.log", Size: 2048, LastModified: time.Now()}
 
 	err := c.FlushHour(context.Background())
 	if err != nil {
@@ -125,7 +74,7 @@ func TestCollector_FlushHour(t *testing.T) {
 
 func TestCollector_FlushHour_clearsData(t *testing.T) {
 	c := NewCollector(t.TempDir())
-	c.AddOrUpdate("/tmp/test.log", 1024, time.Now())
+	c.data["/tmp/test.log"] = Entry{Path: "/tmp/test.log", Size: 1024, LastModified: time.Now()}
 	c.FlushHour(context.Background())
 	c.Clear()
 
@@ -134,25 +83,6 @@ func TestCollector_FlushHour_clearsData(t *testing.T) {
 		t.Errorf("expected empty data after FlushHour+Clear, got %d", len(c.data))
 	}
 	c.mu.RUnlock()
-}
-
-func TestCollector_ConcurrentAddOrUpdate(t *testing.T) {
-	c := NewCollector(t.TempDir())
-	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func(n int) {
-			defer wg.Done()
-			c.AddOrUpdate("/tmp/file", int64(n), time.Now())
-		}(i)
-	}
-	wg.Wait()
-	c.mu.RLock()
-	_, ok := c.data["/tmp/file"]
-	c.mu.RUnlock()
-	if !ok {
-		t.Error("expected entry to exist after concurrent writes")
-	}
 }
 
 func TestCollector_RoundHour(t *testing.T) {

@@ -8,22 +8,9 @@ type Sink struct {
 	warnings []string
 }
 
-// SinkInterface defines operations on the warning sink.
-type SinkInterface interface {
-	Add(msg string)
-	Drain() []string
-}
-
 // NewSink creates a new warning sink.
 func NewSink() *Sink {
 	return &Sink{}
-}
-
-// Add appends a warning message.
-func (s *Sink) Add(msg string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.warnings = append(s.warnings, msg)
 }
 
 // Drain returns all collected warnings and resets the sink.
