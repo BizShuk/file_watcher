@@ -20,8 +20,8 @@ type GrowthEntry struct {
 	IsNew       bool
 }
 
-// ShowCmd runs the show subcommand to display disk usage growth.
-func ShowCmd(statsDir string) error {
+// Show runs the show subcommand to display disk usage growth.
+func Show(statsDir string) error {
 	entries, err := readAllStats(statsDir)
 	if err != nil {
 		return fmt.Errorf("read stats: %w", err)

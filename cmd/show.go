@@ -17,7 +17,7 @@ var ShowCmd = &cobra.Command{
 			return err
 		}
 		statsDir := filepath.Join(homeDir, ".config", "file_watcher", "stats")
-		return svc.ShowCmd(statsDir)
+		return svc.Show(statsDir)
 	},
 }
 
