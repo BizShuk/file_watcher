@@ -29,8 +29,8 @@ type fsWatcher struct {
 	paths       []string
 }
 
-// New creates a new fsWatcher.
-func New(excludeList []string) (*fsWatcher, error) {
+// NewWatcher creates a new fsWatcher.
+func NewWatcher(excludeList []string) (*fsWatcher, error) {
 	return &fsWatcher{
 		done:        make(chan struct{}),
 		excludeList: excludeList,

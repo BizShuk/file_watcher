@@ -29,7 +29,7 @@ type runtime struct {
 func Wire(homeDir string, cfg *config.Settings) (*runtime, error) {
 	statsDir := filepath.Join(homeDir, ".config", "file_watcher", "stats")
 
-	w, err := svc.New(cfg.ExcludeList)
+	w, err := svc.NewWatcher(cfg.ExcludeList)
 	if err != nil {
 		return nil, fmt.Errorf("create watcher: %w", err)
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewWatcher(t *testing.T) {
-	w, err := New(make([]string, 0))
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -19,35 +19,35 @@ func TestNewWatcher(t *testing.T) {
 }
 
 func TestWatcherAdd_file(t *testing.T) {
-	w, err := New(make([]string, 0))
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer w.Close()
 
 	tmp := filepath.Join(t.TempDir(), "testfile.txt")
-	os.WriteFile(tmp, []byte("hello"), 0644)
+	os.WriteFile(tmp, []byte("hello"), 0o644)
 	if err := w.Add(tmp); err != nil {
 		t.Errorf("expected no error adding file, got %v", err)
 	}
 }
 
 func TestWatcherAdd_directory(t *testing.T) {
-	w, err := New(make([]string, 0))
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer w.Close()
 
 	dir := filepath.Join(t.TempDir(), "subdir")
-	os.Mkdir(dir, 0755)
+	os.Mkdir(dir, 0o755)
 	if err := w.Add(dir); err != nil {
 		t.Errorf("expected no error adding dir, got %v", err)
 	}
 }
 
 func TestWatcherAdd_nonexistent(t *testing.T) {
-	w, err := New(make([]string, 0))
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestWatcherAdd_nonexistent(t *testing.T) {
 }
 
 func TestWatcherScan(t *testing.T) {
-	w, err := New(make([]string, 0))
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,13 +69,13 @@ func TestWatcherScan(t *testing.T) {
 	tempDir := t.TempDir()
 
 	subdir := filepath.Join(tempDir, "subdir")
-	os.Mkdir(subdir, 0755)
+	os.Mkdir(subdir, 0o755)
 
 	file1 := filepath.Join(tempDir, "file1.txt")
-	os.WriteFile(file1, []byte("hello"), 0644)
+	os.WriteFile(file1, []byte("hello"), 0o644)
 
 	file2 := filepath.Join(subdir, "file2.txt")
-	os.WriteFile(file2, []byte("world"), 0644)
+	os.WriteFile(file2, []byte("world"), 0o644)
 
 	if err := w.Add(tempDir); err != nil {
 		t.Fatalf("expected no error adding dir, got %v", err)
@@ -88,7 +88,7 @@ func TestWatcherScan(t *testing.T) {
 }
 
 func TestWatcherClose(t *testing.T) {
-	w, err := New(make([]string, 0))
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestWatcherClose(t *testing.T) {
 }
 
 func TestWatcher_Symlinks(t *testing.T) {
-	w, err := New(make([]string, 0))
+	w, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestWatcher_Symlinks(t *testing.T) {
 	tempDir := t.TempDir()
 
 	targetFile := filepath.Join(tempDir, "target.txt")
-	os.WriteFile(targetFile, []byte("target"), 0644)
+	os.WriteFile(targetFile, []byte("target"), 0o644)
 	validLink := filepath.Join(tempDir, "valid_link")
 	err = os.Symlink(targetFile, validLink)
 	if err != nil {
@@ -137,14 +137,14 @@ func TestWatcher_Symlinks(t *testing.T) {
 		t.Error("expected at least one warning for broken symlink, got none")
 	}
 
-	w2, err := New(make([]string, 0))
+	w2, err := NewWatcher(make([]string, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer w2.Close()
 
 	parentDir := filepath.Join(tempDir, "parent")
-	os.Mkdir(parentDir, 0755)
+	os.Mkdir(parentDir, 0o755)
 
 	childBrokenLink := filepath.Join(parentDir, "child_broken_link")
 	os.Symlink(filepath.Join(tempDir, "nonexistent.txt"), childBrokenLink)
