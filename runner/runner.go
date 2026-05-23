@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"context"
@@ -33,8 +33,8 @@ type runtime struct {
 	retentionDays int
 }
 
-// wire builds the runtime from configuration. It is the sole DI entry point.
-func wire(homeDir string, cfg *config.Settings) (*runtime, error) {
+// Wire builds the runtime from configuration. It is the sole DI entry point.
+func Wire(homeDir string, cfg *config.Settings) (*runtime, error) {
 	statsDir := filepath.Join(homeDir, ".config", "file_watcher", "stats")
 
 	w, err := watcher.New(cfg.ExcludeList)
@@ -140,9 +140,9 @@ func finalFlush(ctx context.Context, r *runtime) {
 	}
 }
 
-// run starts the scheduler and blocks until ctx is cancelled. On
+// Run starts the scheduler and blocks until ctx is cancelled. On
 // shutdown it performs a final flush and closes the watcher.
-func run(ctx context.Context, r *runtime) error {
+func Run(ctx context.Context, r *runtime) error {
 	// Scheduler.Start blocks until ctx is cancelled, then returns ctx.Err().
 	// Cancellation is the expected exit path, so only escalate other errors.
 	if err := r.sched.Start(ctx); err != nil &&

@@ -5,33 +5,45 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
-func TestLoader_LoadFrom(t *testing.T) {
-	tmp := func(content string) string {
-		t.Helper()
-		f := filepath.Join(t.TempDir(), "settings.json")
-		os.WriteFile(f, []byte(content), 0600)
-		return f
-	}
+func TestDefault(t *testing.T) {
+	t.Run("load default config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		t.Setenv("HOME", tmpDir)
 
-	t.Run("valid minimal config", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		path := tmp(`{"watch_list": ["/tmp"]}`)
-		cfg, err := l.loadFrom(path)
+		cfgDir := filepath.Join(tmpDir, ".config", "file_watcher")
+		err := os.MkdirAll(cfgDir, 0755)
 		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
+			t.Fatalf("failed to create config dir: %v", err)
 		}
+		
+		os.WriteFile(filepath.Join(cfgDir, "settings.json"), []byte(`{
+			"watch_list": ["/tmp"],
+			"batch_period": "1h",
+			"stats_retention_days": 7
+		}`), 0600)
+
+		viper.Reset()
+		cfg, err := Default()
+		if err != nil {
+			t.Fatalf("Default() failed: %v", err)
+		}
+
 		if len(cfg.WatchList) != 1 || cfg.WatchList[0] != "/tmp" {
 			t.Errorf("unexpected watch_list: %v", cfg.WatchList)
 		}
 	})
+}
 
+func TestSettings_Validate(t *testing.T) {
 	t.Run("default batch_period", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		cfg, err := l.loadFrom(tmp(`{"watch_list": ["/tmp"]}`))
+		cfg := &Settings{WatchList: []string{"/tmp"}}
+		err := cfg.validate()
 		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
+			t.Fatalf("validate() failed: %v", err)
 		}
 		if cfg.BatchPeriod != "1h" {
 			t.Errorf("expected default batch_period=1h, got %q", cfg.BatchPeriod)
@@ -39,10 +51,10 @@ func TestLoader_LoadFrom(t *testing.T) {
 	})
 
 	t.Run("default stats_retention_days", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		cfg, err := l.loadFrom(tmp(`{"watch_list": ["/tmp"]}`))
+		cfg := &Settings{WatchList: []string{"/tmp"}}
+		err := cfg.validate()
 		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
+			t.Fatalf("validate() failed: %v", err)
 		}
 		if cfg.StatsRetentionDays != 7 {
 			t.Errorf("expected default stats_retention_days=7, got %d", cfg.StatsRetentionDays)
@@ -50,60 +62,42 @@ func TestLoader_LoadFrom(t *testing.T) {
 	})
 
 	t.Run("invalid batch_period", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		_, err := l.loadFrom(tmp(`{"watch_list": ["/tmp"], "batch_period": "not-a-duration"}`))
+		cfg := &Settings{WatchList: []string{"/tmp"}, BatchPeriod: "not-a-duration"}
+		err := cfg.validate()
 		if err == nil {
 			t.Fatal("expected error for invalid batch_period")
 		}
 	})
 
 	t.Run("missing watch_list", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		_, err := l.loadFrom(tmp(`{}`))
+		cfg := &Settings{}
+		err := cfg.validate()
 		if err == nil {
 			t.Fatal("expected error for missing watch_list")
 		}
 	})
 
 	t.Run("empty watch_list", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		_, err := l.loadFrom(tmp(`{"watch_list": []}`))
+		cfg := &Settings{WatchList: []string{}}
+		err := cfg.validate()
 		if err == nil {
 			t.Fatal("expected error for empty watch_list")
 		}
 	})
 
 	t.Run("empty path in watch_list", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		_, err := l.loadFrom(tmp(`{"watch_list": ["/tmp", ""]}`))
+		cfg := &Settings{WatchList: []string{"/tmp", ""}}
+		err := cfg.validate()
 		if err == nil {
 			t.Fatal("expected error for empty path in watch_list")
 		}
 	})
 
-	t.Run("file not found", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		_, err := l.loadFrom("/nonexistent/path/settings.json")
-		if err == nil {
-			t.Fatal("expected error for nonexistent file")
-		}
-	})
-
-	t.Run("malformed JSON", func(t *testing.T) {
-		l := NewLoader(t.TempDir())
-		_, err := l.loadFrom(tmp(`{invalid json}`))
-		if err == nil {
-			t.Fatal("expected error for malformed JSON")
-		}
-	})
-
 	t.Run("expand tilde in watch_list", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		l := NewLoader(tmpDir)
-		cfg, err := l.loadFrom(tmp(`{"watch_list": ["~", "~/projects", "/tmp"]}`))
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
-		}
+		cfg := &Settings{WatchList: []string{"~", "~/projects", "/tmp"}}
+		cfg.ExpandPaths(tmpDir)
+
 		expected := []string{tmpDir, filepath.Join(tmpDir, "projects"), "/tmp"}
 		if len(cfg.WatchList) != len(expected) {
 			t.Fatalf("expected %d paths, got %d", len(expected), len(cfg.WatchList))
@@ -133,28 +127,6 @@ func TestBatchPeriodDuration(t *testing.T) {
 		_, err := cfg.BatchPeriodDuration()
 		if err == nil {
 			t.Fatal("expected error for invalid duration")
-		}
-	})
-}
-
-func TestLoader_Load(t *testing.T) {
-	t.Run("load creates default config", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		l := NewLoader(tmpDir)
-		cfg, err := l.Load()
-		if err != nil {
-			t.Fatalf("Load() failed: %v", err)
-		}
-
-		expectedPath := filepath.Join(tmpDir, "projects")
-		if len(cfg.WatchList) != 1 || cfg.WatchList[0] != expectedPath {
-			t.Errorf("unexpected watch_list from default: %v, expected %q", cfg.WatchList, expectedPath)
-		}
-		if cfg.BatchPeriod != "1h" {
-			t.Errorf("expected default batch_period=1h, got %q", cfg.BatchPeriod)
-		}
-		if cfg.StatsRetentionDays != 7 {
-			t.Errorf("expected default stats_retention_days=7, got %d", cfg.StatsRetentionDays)
 		}
 	})
 }
