@@ -23,4 +23,5 @@ var ShowCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(ShowCmd)
+	RootCmd.RunE = ShowCmd.RunE
 }

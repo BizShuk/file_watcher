@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bizshuk/gosdk/scheduler"
 	"github.com/bizshuk/gosdk/notify"
+	"github.com/bizshuk/gosdk/scheduler"
 	"github.com/shuk/file_watcher/config"
 	"github.com/shuk/file_watcher/stats"
-	"github.com/shuk/file_watcher/watcher"
 	"github.com/shuk/file_watcher/warning"
+	"github.com/shuk/file_watcher/watcher"
 )
 
 // SchedulerOps is the consumer-defined interface (ISP): runtime only
@@ -100,9 +100,7 @@ func buildNotifier() notify.Notifier {
 
 	slackToken := os.Getenv("SLACK_BOT_TOKEN")
 	slackChannel := os.Getenv("SLACK_CHANNEL_ID")
-	if slackToken != "" && slackChannel != "" {
-		notifiers = append(notifiers, notify.NewSlackNotifier(slackToken, slackChannel))
-	}
+	notifiers = append(notifiers, notify.NewSlackNotifier(slackToken, slackChannel))
 
 	return notify.NewMulti(notifiers...)
 }
