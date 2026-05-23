@@ -10,13 +10,12 @@
 | File | Responsibility |
 |------|---------------|
 | `main.go` | Entry point, wires DI, graceful shutdown |
-| `config.go` | Loads config via `utils.LoadOrCreate`, validation |
+| `config.go` | Loads config via `sdkutils.CreateIfNotExist`, validation |
 | `settings.default.json` | Embedded default (`//go:embed`) |
 | `stats.go` | In-memory map + RWMutex, hourly flush to JSON |
 | `watcher.go` | fsnotify wrapper, recursive watch |
 | `scheduler.go` | time.Ticker batch scheduler |
 | `notifier.go` | Notifier interface + `StdoutNotifier` |
-| `utils/config.go` | Reusable `LoadOrCreate(path, defaultJSON, out)` SDK |
 
 ---
 

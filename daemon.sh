@@ -44,7 +44,7 @@ get_binary_path() {
 
     # 檢查二進位檔是否存在，或是強制重新編譯
     if [ "${force_rebuild}" = "true" ] || [ ! -f "${bin_path}" ]; then
-        echo "正在編譯並安裝最新二進位檔 (go install .)..."
+        echo "正在編譯並安裝最新二進位檔 (go install .)..." >&2
         go install .
     fi
 
@@ -85,6 +85,7 @@ install_mac() {
     <key>ProgramArguments</key>
     <array>
         <string>${bin_path}</string>
+        <string>start</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -181,7 +182,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${bin_path}
+ExecStart=${bin_path} start
 Restart=always
 RestartSec=5
 WorkingDirectory=$HOME

@@ -221,5 +221,4 @@ go test -race ./...         # 使用 race 檢測器執行測試
 
 ## 相關檔案
 
-- `utils/config.go` — `LoadOrCreate()` 輔助函數，用於 JSON 設定檔的讀取與自動建立
 - `show.go` — `ShowCmd`、`readAllStats`、`computeGrowth`、`formatBytes`、`printBarChart`

@@ -40,7 +40,6 @@ watcher/watcher.go   # Scans/watches directories
 stats/collector.go   # Thread-safe stats collection and serialization
 warning/sink.go      # Thread-safe warning collection
 show/                # Disk usage growth computation and rendering
-utils/config.go      # JSON config file LoadOrCreate helper
 gosdk/notify         # External dependency for notification interface and notifiers
 ```
 

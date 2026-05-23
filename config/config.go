@@ -11,7 +11,7 @@ import (
 	"github.com/bizshuk/gosdk/config"
 	"github.com/charmbracelet/log"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/shuk/file_watcher/utils"
+	sdkutils "github.com/bizshuk/gosdk/utils"
 	"github.com/spf13/viper"
 )
 
@@ -59,13 +59,8 @@ func Default() (*Settings, error) {
 	configDir := expandTilde("~/.config/file_watcher", homeDir)
 
 	// Ensure config file exists, auto-create it with defaults if not present.
-	var initialSettings Settings
 	configFilePath := filepath.Join(configDir, defaultConfigFile)
-	err := utils.LoadOrCreate(
-		configFilePath,
-		defaultConfigJSON,
-		&initialSettings,
-	)
+	err := sdkutils.CreateIfNotExist(configFilePath, defaultConfigJSON)
 	if err != nil {
 		return nil, err
 	}
