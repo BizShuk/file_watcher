@@ -1,39 +1,28 @@
-# 重構與無效程式碼清理驗證紀錄 (Refactoring & Dead Code Cleanup Walkthrough)
+# 全域設定重構驗證紀錄 (Global Config Refactoring Walkthrough)
 
-我們已順利完成套件結構的合併與重新命名重構，並清理了專案中被偵測到的無效程式碼 (dead code)。
+我們已順利完成全域設定 (global config) 的重構，並簡化了相關函式之間的參數傳遞。
 
 ## 變更概述 (Changes Made)
 
-1. `svc` 套件合併：
-   - 移除了原有的 `show/`, `stats/`, `warning/`, `watcher/` 目錄。
-   - 將這些目錄下的所有 Go 原始碼檔與測試檔案合併移入新建的 `svc/` 目錄中，並統一宣告為 `package svc`。
-   - 刪除 `show.go` 中與 `entry.go` 衝突的 `StatFile` 結構定義，並移除了對舊套件的內部引用，將代碼內的 `stats.Entry` 簡化為 `Entry`。
+1. 全域設定存取實作：
+   - 在 `config/config.go` 中宣告了全域變數 `globalSettings`。
+   - 新增了 `Get()` 取得函式。
+   - 在 `Settings` 結構體中新增了 `StatsDir` 欄位。
+   - 修改了 `Default()` 函式，若未設定 `stats_dir`，則會自動指派預設值，並在成功載入與驗證設定檔後將其更新至 `globalSettings`。
 
-2. `handler` 套件移動：
-   - 移了原有的 `runner/` 目錄。
-   - 建立新建的 `handler/` 目錄，將生命週期管理主控程式移至 `handler/runner.go`，並統一宣告為 `package handler`。
-   - 更新引用的內部服務路徑至 `github.com/shuk/file_watcher/svc`。
+2. 簡化參數傳遞與相依注入：
+   - 修改了 `handler/runner.go` 中的 `Wire` 函式，移除了 `homeDir` 參數，改為直接呼叫 `config.Get()` 取得 `cfg.StatsDir` 作為監控資料目錄，完全避免了參數傳遞。
+   - 修改了 `cmd/start.go`，呼叫 `handler.Wire()` 時不再傳入任何參數。
 
-3. 無效程式碼 (Dead Code) 清理：
-   - 偵測到 `svc/collector.go` 中的 `Collector.AddOrUpdate` 與 `Collector.Remove`，以及 `svc/sink.go` 中的 `Sink.Add` 未在主程式碼流程中被呼叫使用。
-   - 這些方法起初用於 fsnotify 即時檔案系統事件監聽處理，而在重構為排程主動掃描模式後已不再使用。
-   - 我們已將這些方法以及對應定義的 `Recorder` 與 `SinkInterface` 介面安全刪除。
-   - 更新了 `svc/stats_test.go`，移除已刪除方法的測試，並調整剩餘測試使其直接將 Mock 資料寫入 `c.data` 中進行驗證。
-
-4. 命令列入口與文檔更新：
-   - 更新了 `cmd/show.go` 與 `cmd/start.go` 的 package import，分別指向 `svc` 與 `handler`。
-   - 更新了 `CLAUDE.md` 與 `docs/PROJECT_SUMMARY.md` 的專案目錄結構說明與架構描述，並遵循全域規則，將所有 `**` 粗體語法替換為 `backticks` 或一般文字。
+3. 單元測試補強：
+   - 在 `config/config_test.go` 中新增了 `TestGlobalConfig` 測試，驗證 `Get()` 能正常運作。
 
 ## 測試與驗證結果 (Testing & Verification)
 
-1. `單元測試 (Unit Tests)`：
-   - 執行 `go test ./...`
-   - 結果：`ok github.com/shuk/file_watcher/svc` ＆ `ok github.com/shuk/file_watcher/config`，所有單元測試皆順利通過。
+1. 單元測試 (Unit Tests)：
+   - 執行 `go test -v ./...`
+   - 所有測試（包含新加入的 `TestGlobalConfig`）皆成功通過。
 
-2. `編譯建置 (Build Verification)`：
+2. 編譯建置 (Build Verification)：
    - 執行 `go build -o file_watcher .`
-   - 結果：順利編譯出二進位檔，無任何編譯或語法錯誤。
-
-3. `無效程式碼檢測 (Dead Code Detection Verification)`：
-   - 再次執行 `deadcode ./...`
-   - 結果：輸出為空，已無任何無法抵達/未使用到的 Go 函數。
+   - 專案成功編譯，無編譯與語法錯誤。

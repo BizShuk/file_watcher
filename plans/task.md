@@ -1,31 +1,14 @@
-# 重構工作清單 (Refactoring Task Checklist)
+# 全域設定重構工作清單 (Global Config Refactoring Task Checklist)
 
-- `[x]` 建立新的 `svc` 目錄並搬移相關服務程式碼
-  - `[x]` 建立 `svc/` 目錄
-  - `[x]` 搬移 `show/` 目錄下的 `growth.go`, `show.go`, `show_test.go`
-  - `[x]` 搬移 `stats/` 目錄下的 `collector.go`, `entry.go`, `stats_test.go`
-  - `[x]` 搬移 `warning/` 目錄下的 `sink.go`
-  - `[x]` 搬移 `watcher/` 目錄下的 `watcher.go`, `watcher_test.go`
-  - `[x]` 刪除 `show/`, `stats/`, `warning/`, `watcher/` 舊目錄
-- `[x]` 調整 `svc` 中的套件宣告與引用
-  - `[x]` 將所有搬移檔案的套件宣告改為 `package svc`
-  - `[x]` 移除 `show.go` 中對 `stats.Entry` 的套件前綴，直接改用 `Entry`
-  - `[x]` 移除 `show.go` 與 `show_test.go` 中對 `github.com/shuk/file_watcher/stats` 的 import
-  - `[x]` 解決 `show.go` 與 `entry.go` 中重疊定義的 `StatFile` 結構
-- `[x]` 建立新的 `handler` 目錄並搬移生命週期管理器
-  - `[x]` 建立 `handler/` 目錄
-  - `[x]` 將 `runner/runner.go` 搬移至 `handler/runner.go`
-  - `[x]` 刪除 `runner/` 舊目錄
-  - `[x]` 將 `runner.go` 的套件宣告改為 `package handler`
-  - `[x]` 更新 `runner.go` 中的引入，改用 `github.com/shuk/file_watcher/svc` 並修正相關調用 (如 `svc.Watcher` 等)
-- `[x]` 更新外部調用與指令進入點
-  - `[x]` 更新 `cmd/show.go` 的引入與呼叫，指向 `svc`
-  - `[x]` 更新 `cmd/start.go` 的引入與呼叫，指向 `handler`
-  - `[x]` 更新 `config/config.go` 的引入與呼叫，指向 `svc` （如 `svc.Entry`）
-- `[x]` 更新文件與說明檔
-  - `[x]` 修改 `docs/PROJECT_SUMMARY.md` 中的架構描述
-  - `[x]` 修改 `CLAUDE.md` 中的模組路徑與說明
-- `[x]` 驗證專案正確性
-  - `[x]` 執行 `go test ./...` 驗證所有測試皆能通過
-  - `[x]` 執行 `go build -o file_watcher .` 驗證專案正常編譯
-  - `[x]` 執行 `./file_watcher` 與 `./file_watcher start` 手動驗證功能正常
+- `[x]` 在 `config/config.go` 中實作全域變數與存取方法
+  - `[x]` 新增 `globalSettings` 變數
+  - `[x]` 實作 `Get()` 與 `Set()` 方法
+  - `[x]` 修改 `Default()` 以自動更新 `globalSettings`
+- `[x]` 修改 `handler/runner.go` 調整相依注入簽名
+  - `[x]` 修改 `Wire` 函式簽名，移除 `cfg` 參數
+  - `[x]` 在 `Wire` 內部透過 `config.Get()` 取得設定
+- `[x]` 更新 `cmd/start.go` 中的呼叫方式
+  - `[x]` 移除 `handler.Wire` 呼叫時的 `cfg` 參數
+- `[x]` 執行驗證
+  - `[x]` 執行 `go test ./...` 驗證測試是否全部通過
+  - `[x]` 執行 `go build -o file_watcher .` 驗證是否編譯成功

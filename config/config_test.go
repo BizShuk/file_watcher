@@ -152,3 +152,14 @@ func TestBatchPeriodDuration(t *testing.T) {
 		}
 	})
 }
+
+func TestGlobalConfig(t *testing.T) {
+	t.Run("get and set global config", func(t *testing.T) {
+		cfg := &Settings{WatchList: []string{"/tmp"}}
+		globalSettings = cfg
+		got := Get()
+		if got != cfg {
+			t.Errorf("expected global config %v, got %v", cfg, got)
+		}
+	})
+}

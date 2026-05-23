@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/bizshuk/gosdk/config"
+	sdkutils "github.com/bizshuk/gosdk/utils"
 	"github.com/charmbracelet/log"
 	"github.com/go-viper/mapstructure/v2"
-	sdkutils "github.com/bizshuk/gosdk/utils"
 	"github.com/spf13/viper"
 )
 
@@ -42,6 +42,7 @@ type Settings struct {
 	BatchPeriod        string   `json:"batch_period"`
 	ScanInterval       string   `json:"scan_interval"`
 	StatsRetentionDays int      `json:"stats_retention_days"`
+	StatsDir           string   `json:"stats_dir"`
 }
 
 // Admin is reserved for future admin-notification integration;
@@ -50,6 +51,13 @@ type Admin struct {
 	Name       string `json:"name"`
 	Email      string `json:"email"`
 	WebhookURL string `json:"webhook_url"`
+}
+
+var globalSettings *Settings
+
+// Get returns the loaded global configuration.
+func Get() *Settings {
+	return globalSettings
 }
 
 // Default reads configuration from ~/.config/file_watcher/settings.json
@@ -76,9 +84,15 @@ func Default() (*Settings, error) {
 		return nil, err
 	}
 
+	if settings.StatsDir == "" {
+		settings.StatsDir = filepath.Join(configDir, "stats")
+	}
+
 	if err := settings.validate(); err != nil {
 		return nil, err
 	}
+
+	globalSettings = &settings
 
 	log.Info("Loaded settings",
 		"watch_list", settings.WatchList,
@@ -86,6 +100,7 @@ func Default() (*Settings, error) {
 		"batch_period", settings.BatchPeriod,
 		"scan_interval", settings.ScanInterval,
 		"stats_retention_days", settings.StatsRetentionDays,
+		"stats_dir", settings.StatsDir,
 	)
 
 	return &settings, nil
@@ -146,6 +161,9 @@ func (s *Settings) ExpandPaths(homeDir string) {
 	}
 	for i, p := range s.WatchList {
 		s.WatchList[i] = expandTilde(p, homeDir)
+	}
+	if s.StatsDir != "" {
+		s.StatsDir = expandTilde(s.StatsDir, homeDir)
 	}
 }
 

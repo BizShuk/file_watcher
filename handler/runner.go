@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -26,8 +25,12 @@ type runtime struct {
 }
 
 // Wire builds the runtime from configuration. It is the sole DI entry point.
-func Wire(homeDir string, cfg *config.Settings) (*runtime, error) {
-	statsDir := filepath.Join(homeDir, ".config", "file_watcher", "stats")
+func Wire() (*runtime, error) {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil, fmt.Errorf("configuration has not been initialized")
+	}
+	statsDir := cfg.StatsDir
 
 	w, err := svc.NewWatcher(cfg.ExcludeList)
 	if err != nil {

@@ -16,13 +16,12 @@ var StartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the file watcher",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.Default()
+		_, err := config.Default()
 		if err != nil {
 			log.Fatal("load config", "err", err)
 			return err
 		}
 
-		homeDir, _ := os.UserHomeDir()
 		ctx, cancel := context.WithCancel(context.Background())
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -31,7 +30,7 @@ var StartCmd = &cobra.Command{
 			cancel()
 		}()
 
-		r, err := handler.Wire(homeDir, cfg)
+		r, err := handler.Wire()
 		if err != nil {
 			log.Fatal("wire", "err", err)
 			return err
