@@ -39,7 +39,7 @@ func roundHour(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
 }
 
-// FlushHour writes the current hour's data to disk and clears the map.
+// FlushHour writes the current hour's data to disk and resets the map.
 // Filename: YYYY-MM-DDTHH.json in statsDir.
 func (c *Collector) FlushHour(ctx context.Context) error {
 	c.mu.Lock()
@@ -47,6 +47,7 @@ func (c *Collector) FlushHour(ctx context.Context) error {
 	for _, entry := range c.data {
 		entries = append(entries, entry)
 	}
+	hour := c.hour
 	c.mu.Unlock()
 
 	if len(entries) == 0 {
@@ -54,7 +55,7 @@ func (c *Collector) FlushHour(ctx context.Context) error {
 	}
 
 	statFile := StatFile{
-		Date:    c.hour.Format(time.RFC3339),
+		Date:    hour.Format(time.RFC3339),
 		Entries: entries,
 	}
 

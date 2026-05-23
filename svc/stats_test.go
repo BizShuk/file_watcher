@@ -72,7 +72,7 @@ func TestCollector_FlushHour(t *testing.T) {
 	}
 }
 
-func TestCollector_FlushHour_clearsData(t *testing.T) {
+func TestCollector_FlushHour_and_Clear(t *testing.T) {
 	c := NewCollector(t.TempDir())
 	c.AddEntry("/tmp/test.log", 1024, time.Now())
 	c.FlushHour(context.Background())
@@ -80,7 +80,7 @@ func TestCollector_FlushHour_clearsData(t *testing.T) {
 
 	c.mu.RLock()
 	if len(c.data) != 0 {
-		t.Errorf("expected empty data after FlushHour+Clear, got %d", len(c.data))
+		t.Errorf("expected empty data after Clear, got %d", len(c.data))
 	}
 	c.mu.RUnlock()
 }

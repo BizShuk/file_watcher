@@ -109,9 +109,13 @@ func buildNotifier() notify.Notifier {
 // finalFlush drains warnings, flushes and prunes stats, then notifies.
 // It owns the shutdown lifecycle that used to live in Scheduler.FlushNow.
 func finalFlush(ctx context.Context, r *runtime) {
+	// Collect warnings from both the sink and the watcher.
 	var warnings []string
 	if r.warnings != nil {
 		warnings = r.warnings.Drain()
+	}
+	if r.watcher != nil {
+		warnings = append(warnings, r.watcher.GetWarnings()...)
 	}
 
 	if err := r.collector.FlushHour(ctx); err != nil {

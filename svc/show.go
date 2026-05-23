@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/charmbracelet/log"
 )
 
 // GrowthEntry holds the computed growth for a file path.
@@ -57,11 +59,13 @@ func readAllStats(statsDir string) (map[string][]Entry, error) {
 	for _, f := range files {
 		data, err := os.ReadFile(f)
 		if err != nil {
+			log.Warn("skipping unreadable stat file", "file", f, "err", err)
 			continue // skip unreadable files
 		}
 
 		var statFile StatFile
 		if err := json.Unmarshal(data, &statFile); err != nil {
+			log.Warn("skipping malformed stat file", "file", f, "err", err)
 			continue
 		}
 
