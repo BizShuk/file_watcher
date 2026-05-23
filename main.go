@@ -10,7 +10,6 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/shuk/file_watcher/config"
-	"github.com/shuk/file_watcher/notify"
 	"github.com/shuk/file_watcher/show"
 )
 
@@ -32,14 +31,6 @@ func main() {
 		case "export":
 			if err := runExport(os.Stdout); err != nil {
 				fmt.Fprintf(os.Stderr, "export: %v\n", err)
-				os.Exit(1)
-			}
-			return
-		case "test-slack":
-			if err := runTestSlack(func(token, channelID string) notify.Notifier {
-				return notify.NewSlackNotifier(token, channelID)
-			}); err != nil {
-				fmt.Fprintf(os.Stderr, "test-slack: %v\n", err)
 				os.Exit(1)
 			}
 			return
