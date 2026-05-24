@@ -10,8 +10,8 @@ import (
 
 	"github.com/bizshuk/gosdk/notify"
 	"github.com/bizshuk/gosdk/scheduler"
-	"github.com/shuk/file_watcher/config"
-	"github.com/shuk/file_watcher/svc"
+	"github.com/bizshuk/file_watcher/config"
+	"github.com/bizshuk/file_watcher/svc"
 )
 
 // runtime holds the application components started together.

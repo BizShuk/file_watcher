@@ -46,7 +46,7 @@
 - [x] `settings.default.json` embedded via `//go:embed`
 - [x] Auto-create config from default if missing
 - [x] Extracted `utils/config.go` as reusable SDK
-- [x] Module: `github.com/shuk/file_watcher`
+- [x] Module: `github.com/bizshuk/file_watcher`
 - [x] SOLID design, 10 unit tests passing
 
 ### 2026-05-23 — Package Refactoring
@@ -72,7 +72,7 @@
 
 ```
 go build -buildvcs=false .   ✅ BUILD OK
-go test ./...                ok   github.com/shuk/file_watcher   0.523s
+go test ./...                ok   github.com/bizshuk/file_watcher   0.523s
 ```
 
 ---

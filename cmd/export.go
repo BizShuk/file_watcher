@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/shuk/file_watcher/config"
+	"github.com/bizshuk/file_watcher/config"
 	"github.com/spf13/cobra"
 )
 

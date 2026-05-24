@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/shuk/file_watcher/svc"
+	"github.com/bizshuk/file_watcher/svc"
 	"github.com/spf13/cobra"
 )
 

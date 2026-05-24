@@ -7,8 +7,8 @@ import (
 	"syscall"
 
 	"github.com/charmbracelet/log"
-	"github.com/shuk/file_watcher/config"
-	"github.com/shuk/file_watcher/handler"
+	"github.com/bizshuk/file_watcher/config"
+	"github.com/bizshuk/file_watcher/handler"
 	"github.com/spf13/cobra"
 )
 

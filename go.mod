@@ -1,4 +1,4 @@
-module github.com/shuk/file_watcher
+module github.com/bizshuk/file_watcher
 
 go 1.25.0
 
