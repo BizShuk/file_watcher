@@ -4,7 +4,6 @@
 package config
 
 import (
-	"os"
 	"path/filepath"
 	"time"
 
@@ -68,8 +67,7 @@ func Get() *Settings {
 // Default reads configuration from ~/.config/file_watcher/settings.json
 // using gosdk config.DefaultWithDir and viper unmarshal.
 func Default() (*Settings, error) {
-	homeDir, _ := os.UserHomeDir()
-	configDir := expandHome("~/.config/file_watcher", homeDir)
+	configDir := config.ExpandHome("~/.config/file_watcher")
 
 	// Ensure config file exists, auto-create it with defaults if not present.
 	configFilePath := filepath.Join(configDir, defaultConfigFile)
@@ -143,7 +141,7 @@ func (s *Settings) validate() error {
 		}
 	}
 
-	s.ExpandPaths("")
+	s.ExpandPaths()
 	return nil
 }
 

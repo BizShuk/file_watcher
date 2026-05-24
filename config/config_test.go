@@ -118,7 +118,7 @@ func TestSettings_Validate(t *testing.T) {
 	t.Run("expand tilde in watch_list", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		cfg := &Settings{WatchList: []string{"~", "~/projects", "/tmp"}}
-		cfg.ExpandPaths(tmpDir)
+		cfg.ExpandPaths()
 
 		expected := []string{tmpDir, filepath.Join(tmpDir, "projects"), "/tmp"}
 		if len(cfg.WatchList) != len(expected) {
