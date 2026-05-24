@@ -18,20 +18,25 @@ import (
 const defaultConfigFile = "settings.json"
 
 var defaultConfigJSON = `{
-  "watch_list": [
-    "~/projects"
-  ],
-  "exclude_list": [
-    ".git"
-  ],
-  "admin": {
-    "name": "admin",
-    "email": "admin@localhost",
-    "webhook_url": ""
-  },
-  "batch_period": "1h",
-  "scan_interval": "30m",
-  "stats_retention_days": 7
+    "watch_list": ["~/projects", "~/.hermes", "~/.claude"],
+    "exclude_list": [
+        ".git",
+        "node_modules",
+        ".venv",
+        "venv",
+        "tmp",
+        "daemon.err",
+        "daemon.log"
+    ],
+    "admin": {
+        "name": "admin",
+        "email": "admin@localhost",
+        "webhook_url": ""
+    },
+    "batch_period": "1h",
+
+    "scan_interval": "30m",
+    "stats_retention_days": 7
 }`
 
 // Settings holds the entire configuration.
@@ -64,7 +69,7 @@ func Get() *Settings {
 // using gosdk config.DefaultWithDir and viper unmarshal.
 func Default() (*Settings, error) {
 	homeDir, _ := os.UserHomeDir()
-	configDir := expandTilde("~/.config/file_watcher", homeDir)
+	configDir := expandHome("~/.config/file_watcher", homeDir)
 
 	// Ensure config file exists, auto-create it with defaults if not present.
 	configFilePath := filepath.Join(configDir, defaultConfigFile)
@@ -155,29 +160,13 @@ type configError struct {
 func (e *configError) Error() string { return e.msg }
 
 // ExpandPaths expands tilde (~) characters in path configurations.
-func (s *Settings) ExpandPaths(homeDir string) {
-	if homeDir == "" {
-		homeDir, _ = os.UserHomeDir()
-	}
+func (s *Settings) ExpandPaths() {
 	for i, p := range s.WatchList {
-		s.WatchList[i] = expandTilde(p, homeDir)
+		s.WatchList[i] = config.ExpandHome(p)
 	}
 	if s.StatsDir != "" {
-		s.StatsDir = expandTilde(s.StatsDir, homeDir)
+		s.StatsDir = config.ExpandHome(s.StatsDir)
 	}
-}
-
-func expandTilde(path string, homeDir string) string {
-	if homeDir == "" {
-		homeDir, _ = os.UserHomeDir()
-	}
-	if path == "~" {
-		return homeDir
-	}
-	if len(path) > 2 && path[:2] == "~/" {
-		return filepath.Join(homeDir, path[2:])
-	}
-	return path
 }
 
 // BatchPeriodDuration returns the parsed batch period as time.Duration.
