@@ -10,8 +10,7 @@ import (
 
 	"github.com/bizshuk/file_watcher/config"
 	"github.com/bizshuk/file_watcher/svc"
-	"github.com/bizshuk/gosdk/notify"
-	"github.com/bizshuk/gosdk/scheduler"
+		"github.com/bizshuk/gosdk/scheduler"
 )
 
 // runtime holds the application components started together.
@@ -19,7 +18,6 @@ type runtime struct {
 	watcher       svc.Watcher
 	collector     *svc.Collector
 	warnings      *svc.Sink
-	notifier      notify.Notifier
 	sched         *scheduler.Scheduler
 	retentionDays int
 }
@@ -39,7 +37,6 @@ func Wire() (*runtime, error) {
 
 	collector := svc.NewCollector(cfg.StatsDir)
 	warnings := svc.NewSink()
-	notif := config.NewNotifier()
 
 	scanInterval, err := cfg.ScanIntervalDuration()
 	if err != nil {
@@ -87,7 +84,6 @@ func Wire() (*runtime, error) {
 		watcher:       w,
 		collector:     collector,
 		warnings:      warnings,
-		notifier:      notif,
 		sched:         sched,
 		retentionDays: cfg.StatsRetentionDays,
 	}, nil
@@ -125,7 +121,7 @@ func finalFlush(ctx context.Context, r *runtime) {
 		message += b.String()
 	}
 
-	if err := r.notifier.Notify(ctx, message); err != nil {
+	if err := config.NewNotifier().Notify(ctx, message); err != nil {
 		fmt.Fprintf(os.Stderr, "notify error: %v\n", err)
 	}
 }
