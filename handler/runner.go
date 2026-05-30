@@ -10,7 +10,7 @@ import (
 
 	"github.com/bizshuk/file_watcher/config"
 	"github.com/bizshuk/file_watcher/svc"
-		"github.com/bizshuk/gosdk/scheduler"
+	"github.com/bizshuk/gosdk/scheduler"
 )
 
 // runtime holds the application components started together.
@@ -84,6 +84,26 @@ func Wire() (*runtime, error) {
 	}, nil
 }
 
+// Run starts the scheduler and blocks until ctx is cancelled. On
+// shutdown it performs a final flush and closes the watcher.
+func Run(ctx context.Context, r *runtime) error {
+	// Scheduler.Start blocks until ctx is cancelled, then returns ctx.Err().
+	// Cancellation is the expected exit path, so only escalate other errors.
+	if err := r.sched.Start(ctx); err != nil &&
+		!errors.Is(err, context.Canceled) &&
+		!errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("start scheduler: %w", err)
+	}
+
+	// The parent ctx is already cancelled — use a fresh, bounded one
+	// so the final flush and notification can actually complete.
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	finalFlush(shutdownCtx, r)
+	r.watcher.Close()
+	return nil
+}
+
 // finalFlush drains warnings, flushes and prunes stats, then notifies.
 // It owns the shutdown lifecycle that used to live in Scheduler.FlushNow.
 func finalFlush(ctx context.Context, r *runtime) {
@@ -116,24 +136,4 @@ func finalFlush(ctx context.Context, r *runtime) {
 	if err := config.NewNotifier().Notify(ctx, message); err != nil {
 		fmt.Fprintf(os.Stderr, "notify error: %v\n", err)
 	}
-}
-
-// Run starts the scheduler and blocks until ctx is cancelled. On
-// shutdown it performs a final flush and closes the watcher.
-func Run(ctx context.Context, r *runtime) error {
-	// Scheduler.Start blocks until ctx is cancelled, then returns ctx.Err().
-	// Cancellation is the expected exit path, so only escalate other errors.
-	if err := r.sched.Start(ctx); err != nil &&
-		!errors.Is(err, context.Canceled) &&
-		!errors.Is(err, context.DeadlineExceeded) {
-		return fmt.Errorf("start scheduler: %w", err)
-	}
-
-	// The parent ctx is already cancelled — use a fresh, bounded one
-	// so the final flush and notification can actually complete.
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	finalFlush(shutdownCtx, r)
-	r.watcher.Close()
-	return nil
 }
