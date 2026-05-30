@@ -5,17 +5,14 @@ package config
 
 import (
 	_ "embed"
+	"errors"
 	"path/filepath"
 	"time"
 
 	"github.com/bizshuk/gosdk/config"
-	sdkutils "github.com/bizshuk/gosdk/utils"
 	"github.com/charmbracelet/log"
-	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
-
-const defaultConfigFile = "settings.json"
 
 //go:embed default_settings.json
 var defaultSettingsJSON string
@@ -39,60 +36,46 @@ type Admin struct {
 	WebhookURL string `json:"webhook_url"`
 }
 
-var globalSettings *Settings
-
-// Get returns the loaded global configuration.
-func Get() *Settings {
-	return globalSettings
-}
+// GlobalSettings holds the loaded configuration.
+var GlobalSettings *Settings
 
 // Default reads configuration from ~/.config/file_watcher/settings.json
 // using gosdk config.DefaultWithDir and viper unmarshal.
-func Default() (*Settings, error) {
+func Default() error {
 	configDir := config.ExpandHome("~/.config/file_watcher")
-
-	// Ensure config file exists, auto-create it with defaults if not present.
-	configFilePath := filepath.Join(configDir, defaultConfigFile)
-	err := sdkutils.CreateIfNotExist(configFilePath, defaultSettingsJSON)
-	if err != nil {
-		return nil, err
-	}
-
-	// Use gosdk config.DefaultWithDir to set CONFIG_DIR
-	config.DefaultWithDir(configDir)
-
-	var settings Settings
-	err = viper.Unmarshal(&settings, func(c *mapstructure.DecoderConfig) {
-		c.TagName = "json"
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if settings.StatsDir == "" {
-		settings.StatsDir = filepath.Join(configDir, "stats")
-	}
-
-	if err := settings.validate(); err != nil {
-		return nil, err
-	}
-
-	globalSettings = &settings
-
-	log.Info("Loaded settings",
-		"watch_list", settings.WatchList,
-		"exclude_list", settings.ExcludeList,
-		"batch_period", settings.BatchPeriod,
-		"scan_interval", settings.ScanInterval,
-		"stats_retention_days", settings.StatsRetentionDays,
-		"stats_dir", settings.StatsDir,
+	config.Default(
+		config.WithAppName("file_watcher"),
+		config.WithConfigDir(configDir),
+		config.WithDefaultValue(defaultSettingsJSON),
 	)
 
-	return &settings, nil
+	err := viper.Unmarshal(&GlobalSettings)
+	if err != nil {
+		return err
+	}
+
+	if err := GlobalSettings.validate(); err != nil {
+		return err
+	}
+
+	log.Info("Loaded settings",
+		"watch_list", GlobalSettings.WatchList,
+		"exclude_list", GlobalSettings.ExcludeList,
+		"batch_period", GlobalSettings.BatchPeriod,
+		"scan_interval", GlobalSettings.ScanInterval,
+		"stats_retention_days", GlobalSettings.StatsRetentionDays,
+		"stats_dir", GlobalSettings.StatsDir,
+	)
+
+	return nil
 }
 
 // validate checks if the settings are valid.
 func (s *Settings) validate() error {
+	if s.StatsDir == "" {
+		s.StatsDir = filepath.Join(config.GetAppConfigDir(), "stats")
+	}
+
 	if s.BatchPeriod == "" {
 		s.BatchPeriod = "1h"
 	}
@@ -128,16 +111,10 @@ func (s *Settings) validate() error {
 }
 
 var (
-	errMissingWatchList     = &configError{"missing watch_list"}
-	errEmptyWatchList       = &configError{"empty watch_list"}
-	errEmptyPathInWatchList = &configError{"empty path in watch_list"}
+	errMissingWatchList     = errors.New("missing watch_list")
+	errEmptyWatchList       = errors.New("empty watch_list")
+	errEmptyPathInWatchList = errors.New("empty path in watch_list")
 )
-
-type configError struct {
-	msg string
-}
-
-func (e *configError) Error() string { return e.msg }
 
 // ExpandPaths expands tilde (~) characters in path configurations.
 func (s *Settings) ExpandPaths() {

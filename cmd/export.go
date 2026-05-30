@@ -19,12 +19,7 @@ var ExportCmd = &cobra.Command{
 
 // RunExport reads the config file and writes it as formatted JSON to the io.Writer.
 func RunExport(w io.Writer) error {
-	cfg, err := config.Default()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	data, err := json.MarshalIndent(cfg, "", "  ")
+	data, err := json.MarshalIndent(config.GlobalSettings, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to format JSON: %w", err)
 	}

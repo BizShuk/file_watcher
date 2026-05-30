@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/bizshuk/file_watcher/config"
 	"github.com/charmbracelet/log"
 )
 
@@ -21,8 +22,8 @@ type GrowthEntry struct {
 }
 
 // Show runs the show subcommand to display disk usage growth.
-func Show(statsDir string) error {
-	entries, err := readAllStats(statsDir)
+func Show() error {
+	entries, err := readAllStats(config.GlobalSettings.StatsDir)
 	if err != nil {
 		return fmt.Errorf("read stats: %w", err)
 	}

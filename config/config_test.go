@@ -27,13 +27,13 @@ func TestDefault(t *testing.T) {
 		}`), 0o600)
 
 		viper.Reset()
-		cfg, err := Default()
+		err = Default()
 		if err != nil {
 			t.Fatalf("Default() failed: %v", err)
 		}
 
-		if len(cfg.WatchList) != 1 || cfg.WatchList[0] != "/tmp" {
-			t.Errorf("unexpected watch_list: %v", cfg.WatchList)
+		if len(GlobalSettings.WatchList) != 1 || GlobalSettings.WatchList[0] != "/tmp" {
+			t.Errorf("unexpected watch_list: %v", GlobalSettings.WatchList)
 		}
 	})
 
@@ -42,7 +42,7 @@ func TestDefault(t *testing.T) {
 		t.Setenv("HOME", tmpDir)
 
 		viper.Reset()
-		cfg, err := Default()
+		err := Default()
 		if err != nil {
 			t.Fatalf("Default() failed when config was missing: %v", err)
 		}
@@ -54,7 +54,7 @@ func TestDefault(t *testing.T) {
 		}
 
 		// Check that default values are loaded
-		if len(cfg.WatchList) == 0 {
+		if len(GlobalSettings.WatchList) == 0 {
 			t.Error("expected default watch list, got empty/nil")
 		}
 	})
@@ -155,12 +155,11 @@ func TestBatchPeriodDuration(t *testing.T) {
 }
 
 func TestGlobalConfig(t *testing.T) {
-	t.Run("get and set global config", func(t *testing.T) {
+	t.Run("set and access global config", func(t *testing.T) {
 		cfg := &Settings{WatchList: []string{"/tmp"}}
-		globalSettings = cfg
-		got := Get()
-		if got != cfg {
-			t.Errorf("expected global config %v, got %v", cfg, got)
+		GlobalSettings = cfg
+		if GlobalSettings != cfg {
+			t.Errorf("expected global config %v, got %v", cfg, GlobalSettings)
 		}
 	})
 }

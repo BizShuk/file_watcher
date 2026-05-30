@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bizshuk/gosdk/notify"
-	"github.com/bizshuk/gosdk/scheduler"
 	"github.com/bizshuk/file_watcher/config"
 	"github.com/bizshuk/file_watcher/svc"
+	"github.com/bizshuk/gosdk/notify"
+	"github.com/bizshuk/gosdk/scheduler"
 )
 
 // runtime holds the application components started together.
@@ -26,10 +26,8 @@ type runtime struct {
 
 // Wire builds the runtime from configuration. It is the sole DI entry point.
 func Wire() (*runtime, error) {
-	cfg := config.Get()
-	if cfg == nil {
-		return nil, fmt.Errorf("configuration has not been initialized")
-	}
+	cfg := config.GlobalSettings
+
 	statsDir := cfg.StatsDir
 
 	w, err := svc.NewWatcher(cfg.ExcludeList)
@@ -73,7 +71,7 @@ func Wire() (*runtime, error) {
 			}
 			return nil
 		},
-		OnError:  onJobErr,
+		OnError: onJobErr,
 	})
 	sched.Add(scheduler.Job{
 		Name:     "flush",
