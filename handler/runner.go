@@ -15,11 +15,9 @@ import (
 
 // runtime holds the application components started together.
 type runtime struct {
-	watcher       svc.Watcher
-	collector     *svc.Collector
-	warnings      *svc.Sink
-	sched         *scheduler.Scheduler
-	retentionDays int
+	watcher   svc.Watcher
+	collector *svc.Collector
+	sched     *scheduler.Scheduler
 }
 
 // Wire builds the runtime from configuration. It is the sole DI entry point.
@@ -36,7 +34,6 @@ func Wire() (*runtime, error) {
 	}
 
 	collector := svc.NewCollector(cfg.StatsDir)
-	warnings := svc.NewSink()
 
 	scanInterval, err := cfg.ScanIntervalDuration()
 	if err != nil {
@@ -81,24 +78,19 @@ func Wire() (*runtime, error) {
 	})
 
 	return &runtime{
-		watcher:       w,
-		collector:     collector,
-		warnings:      warnings,
-		sched:         sched,
-		retentionDays: cfg.StatsRetentionDays,
+		watcher:   w,
+		collector: collector,
+		sched:     sched,
 	}, nil
 }
 
 // finalFlush drains warnings, flushes and prunes stats, then notifies.
 // It owns the shutdown lifecycle that used to live in Scheduler.FlushNow.
 func finalFlush(ctx context.Context, r *runtime) {
-	// Collect warnings from both the sink and the watcher.
+	// Collect warnings from the watcher.
 	var warnings []string
-	if r.warnings != nil {
-		warnings = r.warnings.Drain()
-	}
 	if r.watcher != nil {
-		warnings = append(warnings, r.watcher.GetWarnings()...)
+		warnings = r.watcher.GetWarnings()
 	}
 
 	if err := r.collector.FlushHour(ctx); err != nil {
@@ -106,7 +98,7 @@ func finalFlush(ctx context.Context, r *runtime) {
 	}
 	r.collector.Clear()
 
-	if err := r.collector.Prune(ctx, r.retentionDays); err != nil {
+	if err := r.collector.Prune(ctx, config.GlobalSettings.StatsRetentionDays); err != nil {
 		fmt.Fprintf(os.Stderr, "prune error: %v\n", err)
 	}
 
