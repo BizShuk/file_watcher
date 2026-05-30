@@ -35,3 +35,4 @@ tmp
 file_watcher
 .claude/settings.local.json
 file_watcher
+.vscode/settings.json
