@@ -95,26 +95,20 @@ func (s *Settings) validate() error {
 	}
 
 	if s.WatchList == nil {
-		return errMissingWatchList
+		return errors.New("missing watch_list")
 	}
 	if len(s.WatchList) == 0 {
-		return errEmptyWatchList
+		return errors.New("empty watch_list")
 	}
 	for _, p := range s.WatchList {
 		if p == "" {
-			return errEmptyPathInWatchList
+			return errors.New("empty path in watch_list")
 		}
 	}
 
 	s.ExpandPaths()
 	return nil
 }
-
-var (
-	errMissingWatchList     = errors.New("missing watch_list")
-	errEmptyWatchList       = errors.New("empty watch_list")
-	errEmptyPathInWatchList = errors.New("empty path in watch_list")
-)
 
 // ExpandPaths expands tilde (~) characters in path configurations.
 func (s *Settings) ExpandPaths() {
