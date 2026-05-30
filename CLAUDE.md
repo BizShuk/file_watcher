@@ -25,7 +25,6 @@ go test -run TestWatcherAdd_file  # Run a single test
 go test -race ./...                # Run tests with race detector
 ```
 
-
 ## Architecture
 
 The project is a file watcher that monitors directories for changes and periodically flushes file stats to disk.
@@ -51,8 +50,8 @@ gosdk/notify         # External dependency for notification interface and notifi
 
 1. `handler.Run()` starts the scheduler.
 2. Scheduler runs jobs:
-   - `scan` job calls `svc.Watcher.Scan()` to check files.
-   - `flush` job writes stats using `svc.Flusher.FlushHour()` and prunes old files.
+    - `scan` job calls `svc.Watcher.Scan()` to check files.
+    - `flush` job writes stats using `svc.Flusher.FlushHour()` and prunes old files.
 3. Upon shutdown, a final flush drains warnings and flushes stats.
 4. `notify.Notifier.Notify()` delivers the final report.
 
@@ -62,10 +61,10 @@ Config path: `~/.config/file_watcher/settings.json` (auto-created from embedded 
 
 ```json
 {
-  "watch_list": ["/tmp"],
-  "exclude_list": [".git"],
-  "batch_period": "1h",
-  "stats_retention_days": 7
+    "watch_list": ["/tmp"],
+    "exclude_list": [".git"],
+    "batch_period": "1h",
+    "stats_retention_days": 7
 }
 ```
 

@@ -12,7 +12,7 @@ import (
 )
 
 var StartCmd = &cobra.Command{
-	Use:   "start",
+	Use:   "monitor",
 	Short: "Start the file watcher",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx, cancel := context.WithCancel(context.Background())

@@ -15,3 +15,13 @@ type StatFile struct {
 	Date    string  `json:"date"`
 	Entries []Entry `json:"entries"`
 }
+
+// GrowthEntry holds the computed growth for a file path.
+type GrowthEntry struct {
+	Path        string
+	InitialSize int64
+	LatestSize  int64
+	SizeChange  int64
+	GrowthPct   float64
+	IsNew       bool
+}

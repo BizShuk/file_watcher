@@ -22,9 +22,9 @@ func TestFormatBytes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
-			result := formatBytes(tt.input)
+			result := FormatBytes(tt.input)
 			if result != tt.expected {
-				t.Errorf("formatBytes(%d) = %q, want %q", tt.input, result, tt.expected)
+				t.Errorf("FormatBytes(%d) = %q, want %q", tt.input, result, tt.expected)
 			}
 		})
 	}
@@ -42,7 +42,7 @@ func TestComputeGrowth(t *testing.T) {
 		},
 	}
 
-	growth := computeGrowth(entries)
+	growth := ComputeGrowth(entries)
 
 	if len(growth) != 2 {
 		t.Errorf("expected 2 entries, got %d", len(growth))
@@ -73,7 +73,7 @@ func TestComputeGrowthNewFile(t *testing.T) {
 		},
 	}
 
-	growth := computeGrowth(entries)
+	growth := ComputeGrowth(entries)
 
 	if len(growth) != 1 {
 		t.Errorf("expected 1 entry, got %d", len(growth))

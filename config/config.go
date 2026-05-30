@@ -6,9 +6,11 @@ package config
 import (
 	_ "embed"
 	"errors"
+	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/bizshuk/gosdk/notify"
 	"github.com/bizshuk/gosdk/config"
 	"github.com/charmbracelet/log"
 	"github.com/spf13/viper"
@@ -42,10 +44,8 @@ var GlobalSettings *Settings
 // Default reads configuration from ~/.config/file_watcher/settings.json
 // using gosdk config.DefaultWithDir and viper unmarshal.
 func Default() error {
-	configDir := config.ExpandHome("~/.config/file_watcher")
 	config.Default(
 		config.WithAppName("file_watcher"),
-		config.WithConfigDir(configDir),
 		config.WithDefaultValue(defaultSettingsJSON),
 	)
 
@@ -128,4 +128,17 @@ func (s *Settings) BatchPeriodDuration() (time.Duration, error) {
 // ScanIntervalDuration returns the parsed scan interval as time.Duration.
 func (s *Settings) ScanIntervalDuration() (time.Duration, error) {
 	return time.ParseDuration(s.ScanInterval)
+}
+
+// NewNotifier creates a notifier chain from environment configuration.
+// It uses StdoutNotifier as the default and adds SlackNotifier when
+// SLACK_BOT_TOKEN and SLACK_CHANNEL_ID environment variables are set.
+func NewNotifier() notify.Notifier {
+	notifiers := []notify.Notifier{&notify.StdoutNotifier{}}
+
+	slackToken := os.Getenv("SLACK_BOT_TOKEN")
+	slackChannel := os.Getenv("SLACK_CHANNEL_ID")
+	notifiers = append(notifiers, notify.NewSlackNotifier(slackToken, slackChannel))
+
+	return notify.NewMulti(notifiers...)
 }

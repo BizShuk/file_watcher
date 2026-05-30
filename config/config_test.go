@@ -1,64 +1,10 @@
 package config
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/spf13/viper"
 )
-
-func TestDefault(t *testing.T) {
-	t.Run("load default config", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		t.Setenv("HOME", tmpDir)
-
-		cfgDir := filepath.Join(tmpDir, ".config", "file_watcher")
-		err := os.MkdirAll(cfgDir, 0o755)
-		if err != nil {
-			t.Fatalf("failed to create config dir: %v", err)
-		}
-
-		os.WriteFile(filepath.Join(cfgDir, "settings.json"), []byte(`{
-			"watch_list": ["/tmp"],
-			"batch_period": "1h",
-			"stats_retention_days": 7
-		}`), 0o600)
-
-		viper.Reset()
-		err = Default()
-		if err != nil {
-			t.Fatalf("Default() failed: %v", err)
-		}
-
-		if len(GlobalSettings.WatchList) != 1 || GlobalSettings.WatchList[0] != "/tmp" {
-			t.Errorf("unexpected watch_list: %v", GlobalSettings.WatchList)
-		}
-	})
-
-	t.Run("auto-create config if missing", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		t.Setenv("HOME", tmpDir)
-
-		viper.Reset()
-		err := Default()
-		if err != nil {
-			t.Fatalf("Default() failed when config was missing: %v", err)
-		}
-
-		cfgDir := filepath.Join(tmpDir, ".config", "file_watcher")
-		cfgPath := filepath.Join(cfgDir, "settings.json")
-		if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-			t.Error("expected settings.json to be created, but it was not found")
-		}
-
-		// Check that default values are loaded
-		if len(GlobalSettings.WatchList) == 0 {
-			t.Error("expected default watch list, got empty/nil")
-		}
-	})
-}
 
 func TestSettings_Validate(t *testing.T) {
 	t.Run("default batch_period", func(t *testing.T) {

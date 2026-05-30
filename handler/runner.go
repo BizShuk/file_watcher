@@ -27,9 +27,6 @@ type runtime struct {
 // Wire builds the runtime from configuration. It is the sole DI entry point.
 func Wire() (*runtime, error) {
 	cfg := config.GlobalSettings
-
-	statsDir := cfg.StatsDir
-
 	w, err := svc.NewWatcher(cfg.ExcludeList)
 	if err != nil {
 		return nil, fmt.Errorf("create watcher: %w", err)
@@ -40,9 +37,9 @@ func Wire() (*runtime, error) {
 		}
 	}
 
-	collector := svc.NewCollector(statsDir)
+	collector := svc.NewCollector(cfg.StatsDir)
 	warnings := svc.NewSink()
-	notif := buildNotifier()
+	notif := config.NewNotifier()
 
 	scanInterval, err := cfg.ScanIntervalDuration()
 	if err != nil {
@@ -94,17 +91,6 @@ func Wire() (*runtime, error) {
 		sched:         sched,
 		retentionDays: cfg.StatsRetentionDays,
 	}, nil
-}
-
-// buildNotifier creates the notifier chain from environment.
-func buildNotifier() notify.Notifier {
-	notifiers := []notify.Notifier{&notify.StdoutNotifier{}}
-
-	slackToken := os.Getenv("SLACK_BOT_TOKEN")
-	slackChannel := os.Getenv("SLACK_CHANNEL_ID")
-	notifiers = append(notifiers, notify.NewSlackNotifier(slackToken, slackChannel))
-
-	return notify.NewMulti(notifiers...)
 }
 
 // finalFlush drains warnings, flushes and prunes stats, then notifies.

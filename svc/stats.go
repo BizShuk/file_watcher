@@ -7,44 +7,11 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/bizshuk/file_watcher/config"
 	"github.com/charmbracelet/log"
 )
 
-// GrowthEntry holds the computed growth for a file path.
-type GrowthEntry struct {
-	Path        string
-	InitialSize int64
-	LatestSize  int64
-	SizeChange  int64
-	GrowthPct   float64
-	IsNew       bool
-}
-
-// Show runs the show subcommand to display disk usage growth.
-func Show() error {
-	entries, err := readAllStats(config.GlobalSettings.StatsDir)
-	if err != nil {
-		return fmt.Errorf("read stats: %w", err)
-	}
-
-	if len(entries) == 0 {
-		fmt.Println("目前沒有任何統計資料")
-		return nil
-	}
-
-	growth := computeGrowth(entries)
-	if len(growth) == 0 {
-		fmt.Println("無法計算增長資料")
-		return nil
-	}
-
-	PrintBarChart(growth)
-	return nil
-}
-
 // readAllStats reads all stat files and returns a map of path -> sorted entries by time.
-func readAllStats(statsDir string) (map[string][]Entry, error) {
+func ReadAllStats(statsDir string) (map[string][]Entry, error) {
 	result := make(map[string][]Entry)
 
 	patterns := []string{statsDir + "/*.json"}
@@ -86,8 +53,8 @@ func readAllStats(statsDir string) (map[string][]Entry, error) {
 	return result, nil
 }
 
-// computeGrowth calculates size change from initial to latest for each path.
-func computeGrowth(entries map[string][]Entry) []GrowthEntry {
+// ComputeGrowth calculates size change from initial to latest for each path.
+func ComputeGrowth(entries map[string][]Entry) []GrowthEntry {
 	var growth []GrowthEntry
 
 	for path, pathEntries := range entries {
@@ -130,4 +97,19 @@ func computeGrowth(entries map[string][]Entry) []GrowthEntry {
 	}
 
 	return growth
+}
+
+// FormatBytes converts bytes to human-readable string.
+func FormatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%dB", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	units := []string{"KB", "MB", "GB", "TB"}
+	return fmt.Sprintf("%.1f%s", float64(bytes)/float64(div), units[exp])
 }
