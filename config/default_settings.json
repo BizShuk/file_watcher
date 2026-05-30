@@ -1,0 +1,24 @@
+{
+    "watch_list": [
+        "~/projects",
+        "~/.hermes",
+        "~/.claude"
+    ],
+    "exclude_list": [
+        ".git",
+        "node_modules",
+        ".venv",
+        "venv",
+        "tmp",
+        "daemon.err",
+        "daemon.log"
+    ],
+    "admin": {
+        "name": "admin",
+        "email": "admin@localhost",
+        "webhook_url": ""
+    },
+    "batch_period": "1h",
+    "scan_interval": "30m",
+    "stats_retention_days": 7
+}

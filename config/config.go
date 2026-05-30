@@ -4,6 +4,7 @@
 package config
 
 import (
+	_ "embed"
 	"path/filepath"
 	"time"
 
@@ -16,27 +17,8 @@ import (
 
 const defaultConfigFile = "settings.json"
 
-var defaultConfigJSON = `{
-    "watch_list": ["~/projects", "~/.hermes", "~/.claude"],
-    "exclude_list": [
-        ".git",
-        "node_modules",
-        ".venv",
-        "venv",
-        "tmp",
-        "daemon.err",
-        "daemon.log"
-    ],
-    "admin": {
-        "name": "admin",
-        "email": "admin@localhost",
-        "webhook_url": ""
-    },
-    "batch_period": "1h",
-
-    "scan_interval": "30m",
-    "stats_retention_days": 7
-}`
+//go:embed default_settings.json
+var defaultSettingsJSON string
 
 // Settings holds the entire configuration.
 type Settings struct {
@@ -71,7 +53,7 @@ func Default() (*Settings, error) {
 
 	// Ensure config file exists, auto-create it with defaults if not present.
 	configFilePath := filepath.Join(configDir, defaultConfigFile)
-	err := sdkutils.CreateIfNotExist(configFilePath, defaultConfigJSON)
+	err := sdkutils.CreateIfNotExist(configFilePath, defaultSettingsJSON)
 	if err != nil {
 		return nil, err
 	}
